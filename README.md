@@ -140,4 +140,4 @@ Keep commits small and service-focused. Separate UI changes, API changes, schema
 
 ## License
 
-A project license has not yet been selected. Add a license before distributing StreamSphere publicly.
+MIT License.
