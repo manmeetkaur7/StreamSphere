@@ -128,7 +128,7 @@ Keep commits small and service-focused. Separate UI changes, API changes, schema
 
 ## Backend Content API
 
-Sprint 4 adds a movie catalog and genre management system to the FastAPI service.
+Sprints 4-6 add a movie catalog, engagement features, and an AI-assisted discovery layer to the FastAPI service.
 
 ### Database tables
 
@@ -140,6 +140,9 @@ Sprint 4 adds a movie catalog and genre management system to the FastAPI service
 - `favorites`: authenticated users' favorite movies.
 - `ratings`: one 1-5 rating per user per movie.
 - `reviews`: user-authored movie reviews with titles, bodies, ratings, and timestamps.
+- `watch_progress`: per-user progress tracking for continue watching, including completion state and last watched timestamp.
+- `movie_summaries`: cached AI-generated short and long summaries plus themes and target viewer notes for each movie.
+- `recommendation_cache`: cached per-user recommendation payloads so the home page and recommendations endpoint can reuse computed results.
 
 When the backend starts, it initializes the schema and automatically seeds 20 sample movies plus the default genre set if the `movies` table is empty.
 
@@ -149,9 +152,12 @@ Public catalog endpoints:
 
 - `GET /health`
 - `GET /movies`
+- `GET /movies/trending`
 - `GET /movies/{id}`
+- `GET /movies/{id}/summary`
 - `GET /movies/{id}/reviews`
 - `GET /genres`
+- `POST /search/ai`
 
 Authenticated write endpoints:
 
@@ -172,10 +178,21 @@ Authenticated write endpoints:
 - `GET /favorites`
 - `POST /favorites/{movie_id}`
 - `DELETE /favorites/{movie_id}`
+- `GET /continue-watching`
+- `POST /movies/{id}/progress`
+- `PUT /movies/{id}/progress`
+- `GET /recommendations`
+- `GET /home`
 - `GET /profile`
 - `POST /genres`
 - `PUT /genres/{id}`
 - `DELETE /genres/{id}`
+
+Admin endpoints:
+
+- `POST /movies/{id}/summary/regenerate`
+- `POST /admin/recommendations/recompute`
+- `DELETE /admin/recommendations/cache`
 
 `GET /movies` supports:
 
@@ -186,6 +203,28 @@ Authenticated write endpoints:
 - `sort_order=asc|desc`
 - `genre`
 - `language`
+
+`POST /search/ai` accepts a natural-language query such as `"Funny science fiction movies from the 2020s"` and returns matching movies, model reasoning, and a confidence score.
+
+### AI architecture
+
+Sprint 6 keeps AI logic out of route handlers and organizes it into service modules:
+
+- `ai_provider.py`: provider abstraction with `AIProvider`, `MockAIProvider`, and an `OpenAIProvider` placeholder.
+- `recommendation_service.py`: computes or reuses cached personalized recommendations.
+- `summary_service.py`: generates and caches movie summaries.
+- `search_service.py`: routes natural-language movie search through the provider abstraction.
+- `progress_service.py`: manages continue-watching state.
+- `trending_service.py`: calculates platform-wide trending and top-rated rankings.
+- `home_service.py`: assembles the personalized homepage payload.
+
+The current default provider is the deterministic mock provider. Future OpenAI integration is isolated behind `OpenAIProvider` and configured through environment variables, not hardcoded credentials.
+
+### Caching strategy
+
+- Movie summaries are cached in `movie_summaries` on first request and reused until an admin regenerates them.
+- Personalized recommendations are cached in `recommendation_cache` per user and can be recomputed or cleared by an admin.
+- Continue-watching state is removed automatically when progress reaches 100%.
 
 ### Backend setup and seeding
 
@@ -217,7 +256,14 @@ cd frontend
 npm run lint
 ```
 
-Sprint 5 backend coverage now includes:
+Frontend build:
+
+```bash
+cd frontend
+npm run build
+```
+
+Backend coverage now includes:
 
 - watchlist CRUD
 - favorites CRUD
@@ -225,6 +271,11 @@ Sprint 5 backend coverage now includes:
 - review create/list/update/delete
 - profile aggregation
 - review permission enforcement
+- recommendations and personalized home aggregation
+- continue watching progress tracking
+- natural-language AI search
+- movie summary generation and caching
+- admin-only AI maintenance endpoints
 
 ## Roadmap
 
@@ -233,9 +284,9 @@ Sprint 5 backend coverage now includes:
 - [ ] Add Docker Compose orchestration for frontend, backend, and database services.
 - [x] Build a searchable catalog with genre filters and pagination.
 - [x] Add user accounts and JWT-based authentication.
-- [ ] Add profiles, watchlists, and viewing preferences.
+- [x] Add profiles, watchlists, and viewing preferences.
 - [ ] Integrate streaming-provider availability and deep links.
-- [ ] Introduce ratings and personalized recommendations.
+- [x] Introduce ratings and personalized recommendations.
 - [ ] Add automated accessibility and end-to-end coverage.
 - [ ] Configure CI checks, deployment environments, monitoring, and production runbooks.
 

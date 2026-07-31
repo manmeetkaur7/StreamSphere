@@ -28,6 +28,12 @@ class User(Base):
         nullable=False,
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_admin: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -59,4 +65,15 @@ class User(Base):
         "Review",
         back_populates="user",
         passive_deletes=True,
+    )
+    watch_progress_entries = relationship(
+        "WatchProgress",
+        back_populates="user",
+        passive_deletes=True,
+    )
+    recommendation_cache = relationship(
+        "RecommendationCache",
+        back_populates="user",
+        passive_deletes=True,
+        uselist=False,
     )

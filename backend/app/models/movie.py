@@ -58,3 +58,14 @@ class Movie(Base):
         back_populates="movie",
         passive_deletes=True,
     )
+    progress_entries = relationship(
+        "WatchProgress",
+        back_populates="movie",
+        passive_deletes=True,
+    )
+    summaries = relationship(
+        "MovieSummary",
+        back_populates="movie",
+        passive_deletes=True,
+        uselist=False,
+    )

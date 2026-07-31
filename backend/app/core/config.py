@@ -20,6 +20,8 @@ class Settings:
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "change-this-secret-in-production")
     jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    ai_provider_name: str = os.getenv("AI_PROVIDER", "mock").strip().lower()
+    openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
     allowed_origins: tuple[str, ...] = tuple(
         origin.strip()
