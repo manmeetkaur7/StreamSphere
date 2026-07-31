@@ -31,6 +31,47 @@ export interface MovieListResponse {
   total_pages: number;
 }
 
+export interface RecommendationResponse {
+  recommended_movies: Movie[];
+  recommended_genres: Genre[];
+  reason_for_recommendation: string;
+}
+
+export interface AISearchResponse {
+  matching_movies: Movie[];
+  reasoning: string;
+  confidence: number;
+}
+
+export interface MovieSummary {
+  movie_id: number;
+  short_summary: string;
+  long_summary: string;
+  main_themes: string[];
+  viewer_type: string;
+  provider_name: string;
+  generated_at: string;
+  updated_at: string;
+}
+
+export interface ContinueWatchingItem {
+  id: number;
+  progress_percentage: number;
+  last_watched: string;
+  completed: boolean;
+  movie: Movie;
+}
+
+export interface HomeResponse {
+  continue_watching: ContinueWatchingItem[];
+  recommended: Movie[];
+  trending: Movie[];
+  favorites: Movie[];
+  recently_added: Movie[];
+  top_rated: Movie[];
+  popular_genres: Genre[];
+}
+
 function createUrl(path: string, params?: Record<string, string | number | undefined>) {
   const url = new URL(path, API_BASE_URL);
 
@@ -67,6 +108,30 @@ export async function fetchMovie(id: number) {
 
 export async function fetchGenres() {
   return fetchJson<Genre[]>("/genres");
+}
+
+export async function fetchTrendingMovies() {
+  return fetchJson<Movie[]>("/movies/trending");
+}
+
+export async function searchMoviesWithAI(query: string) {
+  const response = await fetch(createUrl("/search/ai"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  return (await response.json()) as AISearchResponse;
+}
+
+export async function fetchMovieSummary(id: number) {
+  return fetchJson<MovieSummary>(`/movies/${id}/summary`);
 }
 
 export interface Review {

@@ -6,6 +6,7 @@ import MovieCard, { MovieCardSkeleton, type MovieCardProps } from "@/components/
 interface MovieRowProps {
   title: string;
   movies: MovieCardProps[];
+  description?: string;
   isLoading?: boolean;
 }
 
@@ -28,7 +29,7 @@ function ArrowIcon({ direction }: { direction: "left" | "right" }) {
   );
 }
 
-export default function MovieRow({ title, movies, isLoading = false }: MovieRowProps) {
+export default function MovieRow({ title, movies, description, isLoading = false }: MovieRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const rowId = `${title.toLowerCase().replaceAll(" ", "-")}-content`;
 
@@ -47,6 +48,7 @@ export default function MovieRow({ title, movies, isLoading = false }: MovieRowP
       >
         {title}
       </h2>
+      {description ? <p className="-mt-2 mb-5 max-w-3xl text-sm leading-6 text-white/58">{description}</p> : null}
       <div className="relative">
         <button
           type="button"
