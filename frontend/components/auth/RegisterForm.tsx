@@ -1,12 +1,16 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { registerAndLogin } from "@/lib/auth";
 
 interface RegisterErrors {
-  name?: string;
+  username?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
+  form?: string;
 }
 
 function PasswordToggle({ visible, onToggle, label }: { visible: boolean; onToggle: () => void; label: string }) {
@@ -33,23 +37,41 @@ const inputClass = "h-12 w-full rounded-lg border border-white/15 bg-black/20 px
 export default function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<RegisterErrors>({});
+  const router = useRouter();
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const name = String(data.get("name") ?? "").trim();
+    const username = String(data.get("username") ?? "").trim();
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
     const confirmPassword = String(data.get("confirmPassword") ?? "");
     const nextErrors: RegisterErrors = {};
 
-    if (!name) nextErrors.name = "Enter your name.";
+    if (!username) nextErrors.username = "Enter a username.";
+    else if (!/^[a-zA-Z0-9_]+$/.test(username)) nextErrors.username = "Use letters, numbers, or underscores only.";
     if (!email) nextErrors.email = "Enter your email address.";
     else if (!/^\S+@\S+\.\S+$/.test(email)) nextErrors.email = "Enter a valid email address.";
     if (password.length < 8) nextErrors.password = "Password must be at least 8 characters.";
     if (confirmPassword !== password) nextErrors.confirmPassword = "Passwords do not match.";
     setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await registerAndLogin(username, email, password);
+      router.push("/profile");
+      router.refresh();
+    } catch (error) {
+      setErrors({ form: error instanceof Error ? error.message : "Unable to create account." });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -57,12 +79,13 @@ export default function RegisterForm() {
       <SocialButtons />
       <div className="my-6 flex items-center gap-4 text-xs uppercase tracking-widest text-white/30"><span className="h-px flex-1 bg-white/10" />or<span className="h-px flex-1 bg-white/10" /></div>
       <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-        <div><label htmlFor="register-name" className="mb-2 block text-sm font-medium text-white/80">Full name</label><input id="register-name" name="name" type="text" autoComplete="name" aria-invalid={Boolean(errors.name)} className={inputClass} placeholder="Alex Morgan" />{errors.name && <p className="mt-2 text-xs text-red-300">{errors.name}</p>}</div>
+        <div><label htmlFor="register-username" className="mb-2 block text-sm font-medium text-white/80">Username</label><input id="register-username" name="username" type="text" autoComplete="username" aria-invalid={Boolean(errors.username)} className={inputClass} placeholder="alex_morgan" />{errors.username && <p className="mt-2 text-xs text-red-300">{errors.username}</p>}</div>
         <div><label htmlFor="register-email" className="mb-2 block text-sm font-medium text-white/80">Email address</label><input id="register-email" name="email" type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} className={inputClass} placeholder="you@example.com" />{errors.email && <p className="mt-2 text-xs text-red-300">{errors.email}</p>}</div>
         <div><label htmlFor="register-password" className="mb-2 block text-sm font-medium text-white/80">Password</label><div className="relative"><input id="register-password" name="password" type={showPassword ? "text" : "password"} autoComplete="new-password" aria-invalid={Boolean(errors.password)} className={`${inputClass} pr-12`} placeholder="At least 8 characters" /><PasswordToggle visible={showPassword} onToggle={() => setShowPassword(!showPassword)} label="password" /></div>{errors.password && <p className="mt-2 text-xs text-red-300">{errors.password}</p>}</div>
         <div><label htmlFor="register-confirm-password" className="mb-2 block text-sm font-medium text-white/80">Confirm password</label><div className="relative"><input id="register-confirm-password" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" aria-invalid={Boolean(errors.confirmPassword)} className={`${inputClass} pr-12`} placeholder="Repeat your password" /><PasswordToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword(!showConfirmPassword)} label="confirm password" /></div>{errors.confirmPassword && <p className="mt-2 text-xs text-red-300">{errors.confirmPassword}</p>}</div>
         <label className="flex items-start gap-2 pt-1 text-xs leading-5 text-white/55"><input name="terms" type="checkbox" required className="mt-1 h-4 w-4 rounded border-white/20 bg-black/20 accent-[#E50914]" />I agree to the StreamSphere terms and privacy policy.</label>
-        <button type="submit" className="h-12 w-full rounded-lg bg-[#E50914] text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#b80710] hover:shadow-[0_12px_28px_rgba(229,9,20,0.3)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914]">Create Account</button>
+        {errors.form && <p className="text-sm text-red-300">{errors.form}</p>}
+        <button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-lg bg-[#E50914] text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#b80710] hover:shadow-[0_12px_28px_rgba(229,9,20,0.3)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Creating Account..." : "Create Account"}</button>
       </form>
     </>
   );

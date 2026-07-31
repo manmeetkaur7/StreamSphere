@@ -2,12 +2,14 @@ from math import ceil
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import Select, func, select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.db.session import get_db
 from app.models.genre import Genre
 from app.models.movie import Movie
+from app.models.rating import Rating
+from app.models.review import Review
 from app.models.user import User
 from app.schemas.content import (
     CreateMovie,
@@ -17,12 +19,10 @@ from app.schemas.content import (
     SortOrder,
     UpdateMovie,
 )
+from app.schemas.engagement import RatingRequest, RatingResponse, ReviewCreateRequest, ReviewResponse
+from app.services.movie_views import build_movie_select, movie_response_from_row, movie_response_list_from_rows
 
 router = APIRouter(prefix="/movies", tags=["movies"])
-
-
-def _movie_detail_query() -> Select[tuple[Movie]]:
-    return select(Movie).options(selectinload(Movie.genres))
 
 
 def _resolve_genres(db: Session, genre_ids: list[int]) -> list[Genre]:
@@ -41,12 +41,12 @@ def _resolve_genres(db: Session, genre_ids: list[int]) -> list[Genre]:
 
 
 def _apply_movie_filters(
-    statement: Select[tuple[Movie]],
+    statement: Select[tuple[object, ...]],
     *,
     search: str | None,
     genre: str | None,
     language: str | None,
-) -> Select[tuple[Movie]]:
+) -> Select[tuple[object, ...]]:
     if genre:
         statement = statement.join(Movie.genres).where(func.lower(Genre.name) == genre.lower())
     if search:
@@ -57,14 +57,35 @@ def _apply_movie_filters(
 
 
 def _apply_movie_sort(
-    statement: Select[tuple[Movie]],
+    statement: Select[tuple[object, ...]],
     *,
     sort_by: SortBy,
     sort_order: SortOrder,
-) -> Select[tuple[Movie]]:
+) -> Select[tuple[object, ...]]:
     sort_column = Movie.title if sort_by == "title" else Movie.release_year
     sort_expression = sort_column.asc() if sort_order == "asc" else sort_column.desc()
     return statement.order_by(sort_expression, Movie.id.asc())
+
+
+def _movie_detail_row(db: Session, movie_id: int):
+    row = db.execute(build_movie_select().where(Movie.id == movie_id)).one_or_none()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found.")
+    return row
+
+
+def _serialize_review(review: Review) -> ReviewResponse:
+    return ReviewResponse(
+        id=review.id,
+        movie_id=review.movie_id,
+        user_id=review.user_id,
+        username=review.user.username,
+        title=review.title,
+        body=review.body,
+        rating=review.rating,
+        created_at=review.created_at,
+        updated_at=review.updated_at,
+    )
 
 
 @router.get("", response_model=MovieListResponse)
@@ -79,7 +100,7 @@ def list_movies(
     db: Session = Depends(get_db),
 ) -> MovieListResponse:
     filtered_query = _apply_movie_filters(
-        _movie_detail_query(),
+        build_movie_select(),
         search=search,
         genre=genre,
         language=language,
@@ -98,7 +119,7 @@ def list_movies(
         sort_by=sort_by,
         sort_order=sort_order,
     ).offset((page - 1) * page_size).limit(page_size)
-    items = list(db.scalars(statement).all())
+    items = movie_response_list_from_rows(db.execute(statement).all())
 
     return MovieListResponse(
         items=items,
@@ -110,11 +131,8 @@ def list_movies(
 
 
 @router.get("/{movie_id}", response_model=MovieResponse)
-def get_movie(movie_id: int, db: Session = Depends(get_db)) -> Movie:
-    movie = db.scalar(_movie_detail_query().where(Movie.id == movie_id))
-    if movie is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found.")
-    return movie
+def get_movie(movie_id: int, db: Session = Depends(get_db)) -> MovieResponse:
+    return movie_response_from_row(_movie_detail_row(db, movie_id))
 
 
 @router.post("", response_model=MovieResponse, status_code=status.HTTP_201_CREATED)
@@ -136,8 +154,7 @@ def create_movie(
     movie.genres = _resolve_genres(db, payload.genre_ids)
     db.add(movie)
     db.commit()
-    db.refresh(movie)
-    return db.scalar(_movie_detail_query().where(Movie.id == movie.id)) or movie
+    return movie_response_from_row(_movie_detail_row(db, movie.id))
 
 
 @router.put("/{movie_id}", response_model=MovieResponse)
@@ -147,7 +164,7 @@ def update_movie(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> Movie:
-    movie = db.scalar(_movie_detail_query().where(Movie.id == movie_id))
+    movie = db.get(Movie, movie_id)
     if movie is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found.")
 
@@ -172,8 +189,7 @@ def update_movie(
         movie.genres = _resolve_genres(db, updates["genre_ids"])
 
     db.commit()
-    db.refresh(movie)
-    return movie
+    return movie_response_from_row(_movie_detail_row(db, movie.id))
 
 
 @router.delete("/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -188,3 +204,103 @@ def delete_movie(
 
     db.delete(movie)
     db.commit()
+
+
+@router.post("/{movie_id}/rating", response_model=RatingResponse, status_code=status.HTTP_201_CREATED)
+def create_rating(
+    movie_id: int,
+    payload: RatingRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Rating:
+    if db.get(Movie, movie_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found.")
+
+    existing_rating = db.scalar(
+        select(Rating).where(Rating.movie_id == movie_id, Rating.user_id == current_user.id)
+    )
+    if existing_rating is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already rated this movie.",
+        )
+
+    rating = Rating(movie_id=movie_id, user_id=current_user.id, rating=payload.rating)
+    db.add(rating)
+    db.commit()
+    db.refresh(rating)
+    return rating
+
+
+@router.put("/{movie_id}/rating", response_model=RatingResponse)
+def update_rating(
+    movie_id: int,
+    payload: RatingRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Rating:
+    rating = db.scalar(
+        select(Rating).where(Rating.movie_id == movie_id, Rating.user_id == current_user.id)
+    )
+    if rating is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found.")
+
+    rating.rating = payload.rating
+    db.commit()
+    db.refresh(rating)
+    return rating
+
+
+@router.delete("/{movie_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
+def delete_rating(
+    movie_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    rating = db.scalar(
+        select(Rating).where(Rating.movie_id == movie_id, Rating.user_id == current_user.id)
+    )
+    if rating is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rating not found.")
+
+    db.delete(rating)
+    db.commit()
+
+
+@router.get("/{movie_id}/reviews", response_model=list[ReviewResponse])
+def list_reviews(movie_id: int, db: Session = Depends(get_db)) -> list[ReviewResponse]:
+    if db.get(Movie, movie_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found.")
+
+    reviews = list(
+        db.scalars(
+            select(Review)
+            .where(Review.movie_id == movie_id)
+            .order_by(Review.created_at.desc(), Review.id.desc())
+        ).all()
+    )
+    return [_serialize_review(review) for review in reviews]
+
+
+@router.post("/{movie_id}/reviews", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
+def create_review(
+    movie_id: int,
+    payload: ReviewCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ReviewResponse:
+    if db.get(Movie, movie_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found.")
+
+    review = Review(
+        movie_id=movie_id,
+        user_id=current_user.id,
+        title=payload.title.strip(),
+        body=payload.body.strip(),
+        rating=payload.rating,
+    )
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+    return _serialize_review(review)
+

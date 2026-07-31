@@ -81,6 +81,11 @@ DELETE FROM genres;
 - `POST /movies` (requires bearer token)
 - `PUT /movies/{id}` (requires bearer token)
 - `DELETE /movies/{id}` (requires bearer token)
+- `POST /movies/{id}/rating` (requires bearer token)
+- `PUT /movies/{id}/rating` (requires bearer token)
+- `DELETE /movies/{id}/rating` (requires bearer token)
+- `GET /movies/{id}/reviews`
+- `POST /movies/{id}/reviews` (requires bearer token)
 
 `GET /movies` query parameters:
 
@@ -92,6 +97,12 @@ DELETE FROM genres;
 - `genre`
 - `language`
 
+Movie responses now include:
+
+- `average_rating`
+- `total_ratings`
+- `review_count`
+
 ### Genre endpoints
 
 - `GET /genres`
@@ -99,11 +110,44 @@ DELETE FROM genres;
 - `PUT /genres/{id}` (requires bearer token)
 - `DELETE /genres/{id}` (requires bearer token)
 
+### User experience endpoints
+
+- `GET /watchlist` (requires bearer token)
+- `POST /watchlist/{movie_id}` (requires bearer token)
+- `DELETE /watchlist/{movie_id}` (requires bearer token)
+- `GET /favorites` (requires bearer token)
+- `POST /favorites/{movie_id}` (requires bearer token)
+- `DELETE /favorites/{movie_id}` (requires bearer token)
+- `GET /profile` (requires bearer token)
+- `PUT /reviews/{review_id}` (requires bearer token, owner only)
+- `DELETE /reviews/{review_id}` (requires bearer token, owner only)
+
+### New database tables
+
+- `watchlists`
+- `favorites`
+- `ratings`
+- `reviews`
+
+Each table uses foreign keys back to `users` and `movies`, plus uniqueness and supporting indexes where needed.
+
 ## Test
 
 ```bash
 pytest
 ```
+
+The full backend test suite covers:
+
+- health and startup behavior
+- movie and genre CRUD
+- search and pagination
+- watchlist CRUD
+- favorites CRUD
+- ratings
+- reviews
+- profile aggregation
+- owner-only review permission checks
 
 ## Architecture
 

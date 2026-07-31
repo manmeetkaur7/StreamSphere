@@ -1,10 +1,15 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { loginWithCredentials } from "@/lib/auth";
 
 interface LoginErrors {
-  email?: string;
+  identifier?: string;
   password?: string;
+  form?: string;
 }
 
 function EyeIcon({ hidden }: { hidden: boolean }) {
@@ -37,20 +42,36 @@ function SocialButtons() {
 
 export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<LoginErrors>({});
+  const router = useRouter();
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email") ?? "").trim();
+    const identifier = String(formData.get("identifier") ?? "").trim();
     const password = String(formData.get("password") ?? "");
     const nextErrors: LoginErrors = {};
 
-    if (!email) nextErrors.email = "Enter your email address.";
-    else if (!/^\S+@\S+\.\S+$/.test(email)) nextErrors.email = "Enter a valid email address.";
+    if (!identifier) nextErrors.identifier = "Enter your email or username.";
     if (!password) nextErrors.password = "Enter your password.";
     else if (password.length < 8) nextErrors.password = "Password must be at least 8 characters.";
     setErrors(nextErrors);
+
+    if (Object.keys(nextErrors).length > 0) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await loginWithCredentials(identifier, password);
+      router.push("/profile");
+      router.refresh();
+    } catch (error) {
+      setErrors({ form: error instanceof Error ? error.message : "Unable to sign in." });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,9 +84,9 @@ export default function LoginForm() {
       </div>
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <div>
-          <label htmlFor="login-email" className="mb-2 block text-sm font-medium text-white/80">Email address</label>
-          <input id="login-email" name="email" type="email" autoComplete="email" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "login-email-error" : undefined} className="h-12 w-full rounded-lg border border-white/15 bg-black/20 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-[#E50914] focus:ring-2 focus:ring-[#E50914]/20" placeholder="you@example.com" />
-          {errors.email && <p id="login-email-error" className="mt-2 text-xs text-red-300">{errors.email}</p>}
+          <label htmlFor="login-identifier" className="mb-2 block text-sm font-medium text-white/80">Email or username</label>
+          <input id="login-identifier" name="identifier" type="text" autoComplete="username" aria-invalid={Boolean(errors.identifier)} aria-describedby={errors.identifier ? "login-identifier-error" : undefined} className="h-12 w-full rounded-lg border border-white/15 bg-black/20 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-[#E50914] focus:ring-2 focus:ring-[#E50914]/20" placeholder="you@example.com" />
+          {errors.identifier && <p id="login-identifier-error" className="mt-2 text-xs text-red-300">{errors.identifier}</p>}
         </div>
         <div>
           <label htmlFor="login-password" className="mb-2 block text-sm font-medium text-white/80">Password</label>
@@ -77,9 +98,10 @@ export default function LoginForm() {
         </div>
         <div className="flex items-center justify-between gap-4 text-sm">
           <label className="flex items-center gap-2 text-white/60"><input name="remember" type="checkbox" className="h-4 w-4 rounded border-white/20 bg-black/20 accent-[#E50914]" />Remember me</label>
-          <a href="/forgot-password" className="text-[#ff5962] transition-colors hover:text-white">Forgot password?</a>
+          <Link href="/forgot-password" className="text-[#ff5962] transition-colors hover:text-white">Forgot password?</Link>
         </div>
-        <button type="submit" className="h-12 w-full rounded-lg bg-[#E50914] text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#b80710] hover:shadow-[0_12px_28px_rgba(229,9,20,0.3)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914]">Sign In</button>
+        {errors.form && <p className="text-sm text-red-300">{errors.form}</p>}
+        <button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-lg bg-[#E50914] text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#b80710] hover:shadow-[0_12px_28px_rgba(229,9,20,0.3)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Signing In..." : "Sign In"}</button>
       </form>
     </>
   );

@@ -52,8 +52,6 @@ class UpdateMovie(BaseModel):
 
 
 class MovieResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
     title: str
     description: str
@@ -64,6 +62,9 @@ class MovieResponse(BaseModel):
     maturity_rating: str
     language: str
     genres: list[GenreResponse]
+    average_rating: float
+    total_ratings: int
+    review_count: int
     created_at: datetime
     updated_at: datetime
 

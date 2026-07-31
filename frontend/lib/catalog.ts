@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "@/lib/auth";
+
 export interface Genre {
   id: number;
   name: string;
@@ -14,6 +16,9 @@ export interface Movie {
   maturity_rating: string;
   language: string;
   genres: Genre[];
+  average_rating: number;
+  total_ratings: number;
+  review_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -25,8 +30,6 @@ export interface MovieListResponse {
   page_size: number;
   total_pages: number;
 }
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 function createUrl(path: string, params?: Record<string, string | number | undefined>) {
   const url = new URL(path, API_BASE_URL);
@@ -64,6 +67,47 @@ export async function fetchMovie(id: number) {
 
 export async function fetchGenres() {
   return fetchJson<Genre[]>("/genres");
+}
+
+export interface Review {
+  id: number;
+  movie_id: number;
+  user_id: string;
+  username: string;
+  title: string;
+  body: string;
+  rating: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WatchlistItem {
+  id: number;
+  created_at: string;
+  movie: Movie;
+}
+
+export interface FavoriteItem {
+  id: number;
+  created_at: string;
+  movie: Movie;
+}
+
+export interface ProfileReview extends Review {
+  movie_title: string;
+}
+
+export interface Profile {
+  username: string;
+  email: string;
+  account_creation_date: string;
+  favorite_count: number;
+  watchlist_count: number;
+  review_count: number;
+  average_rating_given: number;
+  recent_reviews: ProfileReview[];
+  favorite_movies: Movie[];
+  watchlist_movies: Movie[];
 }
 
 export function formatDuration(minutes: number) {

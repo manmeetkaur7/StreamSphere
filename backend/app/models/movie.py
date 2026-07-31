@@ -38,3 +38,23 @@ class Movie(Base):
         back_populates="movies",
         passive_deletes=True,
     )
+    watchlist_entries = relationship(
+        "Watchlist",
+        back_populates="movie",
+        passive_deletes=True,
+    )
+    favorite_entries = relationship(
+        "Favorite",
+        back_populates="movie",
+        passive_deletes=True,
+    )
+    ratings = relationship(
+        "Rating",
+        back_populates="movie",
+        passive_deletes=True,
+    )
+    reviews = relationship(
+        "Review",
+        back_populates="movie",
+        passive_deletes=True,
+    )

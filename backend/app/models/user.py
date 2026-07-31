@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, String, Uuid, func, true
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -39,4 +39,24 @@ class User(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
+    )
+    watchlist_entries = relationship(
+        "Watchlist",
+        back_populates="user",
+        passive_deletes=True,
+    )
+    favorite_entries = relationship(
+        "Favorite",
+        back_populates="user",
+        passive_deletes=True,
+    )
+    ratings = relationship(
+        "Rating",
+        back_populates="user",
+        passive_deletes=True,
+    )
+    reviews = relationship(
+        "Review",
+        back_populates="user",
+        passive_deletes=True,
     )

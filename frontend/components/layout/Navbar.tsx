@@ -3,8 +3,9 @@ import Link from "next/link";
 const navigationItems = [
   { label: "Home", href: "/" },
   { label: "Movies", href: "/movies" },
+  { label: "Profile", href: "/profile" },
   { label: "TV Shows", href: "/#tv-shows" },
-  { label: "My List", href: "/#my-list" },
+  { label: "My List", href: "/profile" },
 ];
 
 function SearchIcon() {
@@ -74,13 +75,13 @@ export default function Navbar() {
             <BellIcon />
             <span aria-hidden="true" className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#E50914]" />
           </button>
-          <button
-            type="button"
+          <Link
+            href="/profile"
             aria-label="Open user profile"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-[#E50914] to-[#7f0710] text-xs font-semibold text-white transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914]"
           >
             SS
-          </button>
+          </Link>
           <Link
             href="/login"
             className="hidden rounded-md border border-white/20 px-4 py-2 text-sm font-medium text-white transition-all hover:border-white/50 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914] sm:inline-flex"

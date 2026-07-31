@@ -136,6 +136,10 @@ Sprint 4 adds a movie catalog and genre management system to the FastAPI service
 - `movies`: catalog records containing title, synopsis, release year, runtime, poster, trailer, maturity rating, and language metadata.
 - `genres`: reusable catalog genres such as `Action`, `Comedy`, and `Sci-Fi`.
 - `movie_genres`: join table that supports the many-to-many relationship between movies and genres.
+- `watchlists`: authenticated users' saved movies, ordered by most recently added.
+- `favorites`: authenticated users' favorite movies.
+- `ratings`: one 1-5 rating per user per movie.
+- `reviews`: user-authored movie reviews with titles, bodies, ratings, and timestamps.
 
 When the backend starts, it initializes the schema and automatically seeds 20 sample movies plus the default genre set if the `movies` table is empty.
 
@@ -146,6 +150,7 @@ Public catalog endpoints:
 - `GET /health`
 - `GET /movies`
 - `GET /movies/{id}`
+- `GET /movies/{id}/reviews`
 - `GET /genres`
 
 Authenticated write endpoints:
@@ -155,6 +160,19 @@ Authenticated write endpoints:
 - `POST /movies`
 - `PUT /movies/{id}`
 - `DELETE /movies/{id}`
+- `POST /movies/{id}/rating`
+- `PUT /movies/{id}/rating`
+- `DELETE /movies/{id}/rating`
+- `POST /movies/{id}/reviews`
+- `PUT /reviews/{id}`
+- `DELETE /reviews/{id}`
+- `GET /watchlist`
+- `POST /watchlist/{movie_id}`
+- `DELETE /watchlist/{movie_id}`
+- `GET /favorites`
+- `POST /favorites/{movie_id}`
+- `DELETE /favorites/{movie_id}`
+- `GET /profile`
 - `POST /genres`
 - `PUT /genres/{id}`
 - `DELETE /genres/{id}`
@@ -198,6 +216,15 @@ Frontend lint:
 cd frontend
 npm run lint
 ```
+
+Sprint 5 backend coverage now includes:
+
+- watchlist CRUD
+- favorites CRUD
+- rating create/update/delete
+- review create/list/update/delete
+- profile aggregation
+- review permission enforcement
 
 ## Roadmap
 
