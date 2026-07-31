@@ -8,9 +8,15 @@ class Base(DeclarativeBase):
 
 
 def register_models() -> None:
+    from app.models.genre import Genre  # noqa: F401
+    from app.models.movie import Movie  # noqa: F401
+    from app.models.movie_genre import MovieGenre  # noqa: F401
     from app.models.user import User  # noqa: F401
 
 
 def init_db() -> None:
+    from app.services.content_seed import seed_content_data
+
     register_models()
     Base.metadata.create_all(bind=engine)
+    seed_content_data()

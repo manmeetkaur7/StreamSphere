@@ -58,6 +58,47 @@ The API is available at [http://localhost:8000](http://localhost:8000).
 
 JWT signing configuration is provided through `JWT_SECRET_KEY`, `JWT_ALGORITHM`, and `ACCESS_TOKEN_EXPIRE_MINUTES`. Refresh tokens, email verification, and password reset are not implemented.
 
+## Content Management API
+
+The backend now includes a seeded movie catalog with genre management.
+
+### Automatic sample data
+
+On startup, the service runs `Base.metadata.create_all()` and seeds 20 sample movies with default genres if the `movies` table is empty. No extra seed command is required for a fresh local database.
+
+To reseed locally, clear the catalog tables and restart the API:
+
+```sql
+DELETE FROM movie_genres;
+DELETE FROM movies;
+DELETE FROM genres;
+```
+
+### Movie endpoints
+
+- `GET /movies`
+- `GET /movies/{id}`
+- `POST /movies` (requires bearer token)
+- `PUT /movies/{id}` (requires bearer token)
+- `DELETE /movies/{id}` (requires bearer token)
+
+`GET /movies` query parameters:
+
+- `page`
+- `page_size`
+- `search`
+- `sort_by=title|release_year`
+- `sort_order=asc|desc`
+- `genre`
+- `language`
+
+### Genre endpoints
+
+- `GET /genres`
+- `POST /genres` (requires bearer token)
+- `PUT /genres/{id}` (requires bearer token)
+- `DELETE /genres/{id}` (requires bearer token)
+
 ## Test
 
 ```bash
@@ -72,8 +113,6 @@ pytest
 - `app/db/` contains the SQLAlchemy declarative base, engine, session factory, and FastAPI database dependency.
 - `app/models/` contains persistence models registered with the declarative base.
 - `app/schemas/` contains request and response contracts.
-- `app/services/` is reserved for domain and integration services.
+- `app/services/` contains domain services such as catalog seeding.
 - `app/utils/` contains shared utility functions.
 - `tests/` contains automated API tests.
-
-The service currently has no migrations, seed data, or external service integrations.

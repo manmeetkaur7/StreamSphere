@@ -1,0 +1,87 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Next.js and build output
+.next/
+out/
+build/
+dist/
+coverage/
+.turbo/
+
+# Runtime logs and reports
+*.log
+logs/
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# TypeScript and tooling caches
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
+.stylelintcache
+.cache/
+
+# Vercel and Docker local overrides
+.vercel/
+docker-compose.override.yml
+.docker/
+
+# Python tooling and generated files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.coverage
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+
+# Operating system files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Package manager debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Local-only files
+*.local
+tmp/
+temp/

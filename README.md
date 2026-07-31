@@ -126,16 +126,90 @@ Keep secrets and machine-specific configuration in local environment files. Neve
 
 Keep commits small and service-focused. Separate UI changes, API changes, schema migrations, and infrastructure changes when practical. Database migrations should be reviewed together with the backend code that consumes them.
 
+## Backend Content API
+
+Sprint 4 adds a movie catalog and genre management system to the FastAPI service.
+
+### Database tables
+
+- `users`: authenticated platform users.
+- `movies`: catalog records containing title, synopsis, release year, runtime, poster, trailer, maturity rating, and language metadata.
+- `genres`: reusable catalog genres such as `Action`, `Comedy`, and `Sci-Fi`.
+- `movie_genres`: join table that supports the many-to-many relationship between movies and genres.
+
+When the backend starts, it initializes the schema and automatically seeds 20 sample movies plus the default genre set if the `movies` table is empty.
+
+### API endpoints
+
+Public catalog endpoints:
+
+- `GET /health`
+- `GET /movies`
+- `GET /movies/{id}`
+- `GET /genres`
+
+Authenticated write endpoints:
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /movies`
+- `PUT /movies/{id}`
+- `DELETE /movies/{id}`
+- `POST /genres`
+- `PUT /genres/{id}`
+- `DELETE /genres/{id}`
+
+`GET /movies` supports:
+
+- `page`
+- `page_size`
+- `search`
+- `sort_by=title|release_year`
+- `sort_order=asc|desc`
+- `genre`
+- `language`
+
+### Backend setup and seeding
+
+From `backend/`:
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
+uvicorn app.main:app --reload
+```
+
+Seeding is automatic on startup when the catalog is empty. To reseed locally, clear the `movies`, `movie_genres`, and `genres` tables, then restart the backend.
+
+### Test
+
+Backend tests:
+
+```bash
+cd backend
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Frontend lint:
+
+```bash
+cd frontend
+npm run lint
+```
+
 ## Roadmap
 
-- [ ] Establish the FastAPI application and versioned API structure.
-- [ ] Add PostgreSQL models, migrations, and seed data.
+- [x] Establish the FastAPI application and versioned API structure.
+- [x] Add PostgreSQL models, migrations, and seed data.
 - [ ] Add Docker Compose orchestration for frontend, backend, and database services.
-- [ ] Build a searchable catalog with genre, provider, and availability filters.
-- [ ] Add user accounts, profiles, watchlists, and viewing preferences.
+- [x] Build a searchable catalog with genre filters and pagination.
+- [x] Add user accounts and JWT-based authentication.
+- [ ] Add profiles, watchlists, and viewing preferences.
 - [ ] Integrate streaming-provider availability and deep links.
 - [ ] Introduce ratings and personalized recommendations.
-- [ ] Add automated unit, integration, accessibility, and end-to-end coverage.
+- [ ] Add automated accessibility and end-to-end coverage.
 - [ ] Configure CI checks, deployment environments, monitoring, and production runbooks.
 
 ## License
