@@ -3,31 +3,57 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi import Request
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.logging import configure_logging, structured_logging_middleware
+from app.core.rate_limit import rate_limit_middleware
 from app.db.base import init_db
+from app.services.cache import reset_runtime_services
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    reset_runtime_services()
     init_db()
     yield
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    configure_logging()
     application = FastAPI(
         title=settings.app_name,
+        summary="StreamSphere backend for content discovery, engagement, and AI-assisted recommendations.",
+        description=settings.app_description,
         version=settings.api_version,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url="/docs" if settings.docs_enabled else None,
+        redoc_url="/redoc" if settings.docs_enabled else None,
         openapi_url="/openapi.json",
         lifespan=lifespan,
+        contact={"name": "StreamSphere", "url": "https://example.com/streamsphere"},
+        license_info={"name": "MIT"},
+        openapi_tags=[
+            {"name": "health", "description": "Operational status and dependency monitoring."},
+            {"name": "authentication", "description": "Registration and JWT login."},
+            {"name": "movies", "description": "Catalog, ratings, summaries, and progress tracking."},
+            {"name": "genres", "description": "Movie genre management."},
+            {"name": "watchlist", "description": "User watchlist management."},
+            {"name": "favorites", "description": "User favorites management."},
+            {"name": "reviews", "description": "Review maintenance endpoints."},
+            {"name": "recommendations", "description": "Personalized recommendation payloads."},
+            {"name": "search", "description": "Natural-language movie discovery endpoints."},
+            {"name": "home", "description": "Personalized home page aggregates."},
+            {"name": "admin", "description": "Administrative maintenance for AI caches and summaries."},
+        ],
+        servers=[
+            {"url": "http://127.0.0.1:8000", "description": "Local development"},
+            {"url": "http://localhost:8000", "description": "Docker Compose local stack"},
+        ],
     )
 
     application.add_middleware(
@@ -37,6 +63,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    application.middleware("http")(structured_logging_middleware)
+    application.middleware("http")(rate_limit_middleware)
 
     @application.exception_handler(Exception)
     async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:

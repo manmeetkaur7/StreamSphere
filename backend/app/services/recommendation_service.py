@@ -11,8 +11,10 @@ from app.models.recommendation_cache import RecommendationCache
 from app.models.review import Review
 from app.models.user import User
 from app.models.watchlist import Watchlist
+from app.core.config import get_settings
 from app.schemas.ai import RecommendationResponse
 from app.schemas.content import GenreResponse
+from app.services.cache import get_cache_service
 from app.services.movie_views import (
     build_movie_select,
     movie_response_from_row,
@@ -113,7 +115,12 @@ def _recommendation_candidates(db: Session, current_user: User) -> list[int]:
     return recommended_ids[:20]
 
 
+def _recommendation_cache_key(user_id: object) -> str:
+    return f"recommendations:user:{user_id}"
+
+
 def compute_recommendations(db: Session, current_user: User, *, persist: bool = True) -> RecommendationResponse:
+    settings = get_settings()
     top_genres = _top_genres_for_user(db, current_user)
     movie_ids = _recommendation_candidates(db, current_user)
     movie_rows = _movie_rows_by_ids(db, movie_ids)
@@ -123,6 +130,12 @@ def compute_recommendations(db: Session, current_user: User, *, persist: bool = 
         "Recommendations blend your favorite genres, strong personal ratings, watchlist activity, and high-performing recent catalog additions."
         if genre_labels
         else "Recommendations are based on top-rated and recently added movies until more personal taste data is available."
+    )
+
+    payload = RecommendationResponse(
+        recommended_movies=recommended_movies,
+        recommended_genres=[GenreResponse.model_validate(genre) for genre in top_genres],
+        reason_for_recommendation=reason,
     )
 
     if persist:
@@ -142,15 +155,21 @@ def compute_recommendations(db: Session, current_user: User, *, persist: bool = 
         cache.recommended_genres = ",".join(genre_labels)
         cache.reason_for_recommendation = reason
         db.commit()
+        get_cache_service().set_json(
+            _recommendation_cache_key(current_user.id),
+            payload.model_dump(mode="json"),
+            settings.recommendation_cache_ttl_seconds,
+        )
 
-    return RecommendationResponse(
-        recommended_movies=recommended_movies,
-        recommended_genres=[GenreResponse.model_validate(genre) for genre in top_genres],
-        reason_for_recommendation=reason,
-    )
+    return payload
 
 
 def get_recommendations(db: Session, current_user: User) -> RecommendationResponse:
+    cache_service = get_cache_service()
+    cached = cache_service.get_json(_recommendation_cache_key(current_user.id))
+    if cached is not None:
+        return RecommendationResponse.model_validate(cached)
+
     cache = db.scalar(
         select(RecommendationCache).where(RecommendationCache.user_id == current_user.id)
     )
@@ -168,17 +187,28 @@ def get_recommendations(db: Session, current_user: User) -> RecommendationRespon
         for name in _csv_to_strings(cache.recommended_genres)
         if name in genres_by_name
     ]
-    return RecommendationResponse(
+    payload = RecommendationResponse(
         recommended_movies=recommended_movies,
         recommended_genres=ordered_genres,
         reason_for_recommendation=cache.reason_for_recommendation,
     )
+    cache_service.set_json(
+        _recommendation_cache_key(current_user.id),
+        payload.model_dump(mode="json"),
+        get_settings().recommendation_cache_ttl_seconds,
+    )
+    return payload
+
+
+def invalidate_user_recommendation_cache(user_id: object) -> None:
+    get_cache_service().delete(_recommendation_cache_key(user_id))
 
 
 def clear_recommendation_cache(db: Session) -> int:
     caches = db.scalars(select(RecommendationCache)).all()
     count = len(list(caches))
     for cache in list(caches):
+        invalidate_user_recommendation_cache(cache.user_id)
         db.delete(cache)
     db.commit()
     return count

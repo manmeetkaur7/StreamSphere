@@ -4,30 +4,65 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
-load_dotenv(ENV_FILE)
+ROOT_ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+BACKEND_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
+
+load_dotenv(ROOT_ENV_FILE)
+load_dotenv(BACKEND_ENV_FILE, override=True)
 
 
 class Settings:
     """Application settings loaded from environment variables."""
 
-    app_name: str = "StreamSphere API"
-    api_version: str = "v1"
-    database_url: str = os.getenv(
-        "DATABASE_URL",
-        "postgresql://postgres:password@localhost:5432/streamsphere",
-    )
-    jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "change-this-secret-in-production")
-    jwt_algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
-    access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-    ai_provider_name: str = os.getenv("AI_PROVIDER", "mock").strip().lower()
-    openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
-    debug: bool = os.getenv("DEBUG", "false").lower() == "true"
-    allowed_origins: tuple[str, ...] = tuple(
-        origin.strip()
-        for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
-        if origin.strip()
-    )
+    def __init__(self) -> None:
+        self.app_name = "StreamSphere API"
+        self.api_version = os.getenv("API_VERSION", "1.0.0")
+        self.app_environment = os.getenv("APP_ENV", "development").strip().lower()
+        self.app_description = (
+            "StreamSphere is a FastAPI backend for catalog browsing, engagement features, "
+            "and AI-assisted discovery across movies, watchlists, reviews, recommendations, and search."
+        )
+        self.database_url = os.getenv(
+            "DATABASE_URL",
+            "postgresql://postgres:password@localhost:5432/streamsphere",
+        )
+        self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
+        self.cache_default_ttl_seconds = int(os.getenv("CACHE_DEFAULT_TTL_SECONDS", "300"))
+        self.recommendation_cache_ttl_seconds = int(
+            os.getenv("RECOMMENDATION_CACHE_TTL_SECONDS", "300")
+        )
+        self.ai_search_cache_ttl_seconds = int(os.getenv("AI_SEARCH_CACHE_TTL_SECONDS", "600"))
+        self.movie_summary_cache_ttl_seconds = int(
+            os.getenv("MOVIE_SUMMARY_CACHE_TTL_SECONDS", "3600")
+        )
+        self.jwt_secret_key = os.getenv("JWT_SECRET_KEY", "change-this-secret-in-production")
+        self.jwt_algorithm = os.getenv("JWT_ALGORITHM", "HS256")
+        self.access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+        self.ai_provider_name = os.getenv("AI_PROVIDER", "mock").strip().lower()
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        self.debug = os.getenv("DEBUG", "false").lower() == "true"
+        self.docs_enabled = os.getenv("DOCS_ENABLED", "true").lower() == "true"
+        self.log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+        self.structured_logging_enabled = (
+            os.getenv("STRUCTURED_LOGGING_ENABLED", "true").lower() == "true"
+        )
+        self.rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+        self.rate_limit_requests = int(os.getenv("RATE_LIMIT_REQUESTS", "120"))
+        self.rate_limit_window_seconds = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+        self.rate_limit_exempt_paths = tuple(
+            path.strip()
+            for path in os.getenv(
+                "RATE_LIMIT_EXEMPT_PATHS",
+                "/health,/docs,/redoc,/openapi.json",
+            ).split(",")
+            if path.strip()
+        )
+        self.allowed_origins = tuple(
+            origin.strip()
+            for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+            if origin.strip()
+        )
 
 
 @lru_cache

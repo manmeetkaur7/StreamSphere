@@ -9,6 +9,7 @@ from app.models.movie import Movie
 from app.models.user import User
 from app.schemas.engagement import FavoriteItemResponse
 from app.services.movie_views import build_movie_select, movie_response_from_row
+from app.services.recommendation_service import invalidate_user_recommendation_cache
 
 router = APIRouter(prefix="/favorites", tags=["favorites"])
 
@@ -57,6 +58,7 @@ def add_favorite(
     db.add(entry)
     db.commit()
     db.refresh(entry)
+    invalidate_user_recommendation_cache(current_user.id)
     movie_row = db.execute(build_movie_select().where(Movie.id == movie_id)).one()
     return FavoriteItemResponse(
         id=entry.id,
@@ -79,3 +81,4 @@ def remove_favorite(
 
     db.delete(entry)
     db.commit()
+    invalidate_user_recommendation_cache(current_user.id)

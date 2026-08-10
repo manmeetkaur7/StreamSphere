@@ -1,4 +1,12 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const PUBLIC_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const INTERNAL_API_BASE_URL =
+  process.env.INTERNAL_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+export const API_BASE_URL = PUBLIC_API_BASE_URL;
+
+export function resolveApiBaseUrl() {
+  return typeof window === "undefined" ? INTERNAL_API_BASE_URL : PUBLIC_API_BASE_URL;
+}
 
 const ACCESS_TOKEN_KEY = "streamsphere_access_token";
 
@@ -66,7 +74,7 @@ export async function fetchWithAuth<T>(path: string, init?: RequestInit): Promis
     throw new Error("Please sign in to continue.");
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
     ...init,
     headers: {
       ...(init?.headers ?? {}),

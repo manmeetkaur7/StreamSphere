@@ -21,6 +21,7 @@ from app.schemas.content import (
 )
 from app.schemas.engagement import RatingRequest, RatingResponse, ReviewCreateRequest, ReviewResponse
 from app.services.movie_views import build_movie_select, movie_response_from_row, movie_response_list_from_rows
+from app.services.recommendation_service import invalidate_user_recommendation_cache
 
 router = APIRouter(prefix="/movies", tags=["movies"])
 
@@ -229,6 +230,7 @@ def create_rating(
     db.add(rating)
     db.commit()
     db.refresh(rating)
+    invalidate_user_recommendation_cache(current_user.id)
     return rating
 
 
@@ -248,6 +250,7 @@ def update_rating(
     rating.rating = payload.rating
     db.commit()
     db.refresh(rating)
+    invalidate_user_recommendation_cache(current_user.id)
     return rating
 
 
@@ -265,6 +268,7 @@ def delete_rating(
 
     db.delete(rating)
     db.commit()
+    invalidate_user_recommendation_cache(current_user.id)
 
 
 @router.get("/{movie_id}/reviews", response_model=list[ReviewResponse])
@@ -302,5 +306,5 @@ def create_review(
     db.add(review)
     db.commit()
     db.refresh(review)
+    invalidate_user_recommendation_cache(current_user.id)
     return _serialize_review(review)
-

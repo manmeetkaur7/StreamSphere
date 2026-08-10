@@ -7,6 +7,7 @@ from app.db.session import get_db
 from app.models.review import Review
 from app.models.user import User
 from app.schemas.engagement import ReviewResponse, ReviewUpdateRequest
+from app.services.recommendation_service import invalidate_user_recommendation_cache
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -48,6 +49,7 @@ def update_review(
 
     db.commit()
     db.refresh(review)
+    invalidate_user_recommendation_cache(current_user.id)
     return _serialize_review(review)
 
 
@@ -65,3 +67,4 @@ def delete_review(
 
     db.delete(review)
     db.commit()
+    invalidate_user_recommendation_cache(current_user.id)

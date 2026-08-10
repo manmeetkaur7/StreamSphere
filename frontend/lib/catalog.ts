@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "@/lib/auth";
+import { resolveApiBaseUrl } from "@/lib/auth";
 
 export interface Genre {
   id: number;
@@ -73,7 +73,7 @@ export interface HomeResponse {
 }
 
 function createUrl(path: string, params?: Record<string, string | number | undefined>) {
-  const url = new URL(path, API_BASE_URL);
+  const url = new URL(path, resolveApiBaseUrl());
 
   if (params) {
     for (const [key, value] of Object.entries(params)) {
