@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 
-import { API_BASE_URL, clearAccessToken, fetchWithAuth, getAccessToken } from "@/lib/auth";
+import { clearAccessToken, fetchWithAuth, getAccessToken, resolveApiBaseUrl } from "@/lib/auth";
 import type { FavoriteItem, Movie, Review, WatchlistItem } from "@/lib/catalog";
 import { fetchMovie, formatDuration } from "@/lib/catalog";
 
@@ -24,14 +24,15 @@ export default function MovieEngagementClient({ initialMovie }: MovieEngagementC
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [authenticated, setAuthenticated] = useState(() => Boolean(getAccessToken()));
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authResolved, setAuthResolved] = useState(false);
 
   async function refreshMovie() {
     setMovie(await fetchMovie(movie.id));
   }
 
   async function fetchReviewsData(movieId: number) {
-    const response = await fetch(`${API_BASE_URL}/movies/${movieId}/reviews`, { cache: "no-store" });
+    const response = await fetch(`${resolveApiBaseUrl()}/movies/${movieId}/reviews`, { cache: "no-store" });
     return (await response.json()) as Review[];
   }
 
@@ -58,40 +59,57 @@ export default function MovieEngagementClient({ initialMovie }: MovieEngagementC
   useEffect(() => {
     let active = true;
 
-    void fetchReviewsData(movie.id)
-      .then((payload) => {
+    async function loadEngagement() {
+      const hasToken = Boolean(getAccessToken());
+      if (!active) {
+        return;
+      }
+
+      setAuthenticated(hasToken);
+      setAuthResolved(true);
+
+      try {
+        const reviewsPayload = await fetchReviewsData(movie.id);
         if (!active) {
           return;
         }
-        setReviews(payload);
-      })
-      .finally(() => {
+        setReviews(reviewsPayload);
+      } finally {
         if (active) {
           setLoadingReviews(false);
         }
-      });
+      }
 
-    if (authenticated && getAccessToken()) {
-      void fetchSavedStateData(movie.id)
-        .then(({ watchlisted: nextWatchlisted, favorited: nextFavorited }) => {
-          if (!active) {
-            return;
-          }
-          setWatchlisted(nextWatchlisted);
-          setFavorited(nextFavorited);
-        })
-        .catch((requestError) => {
-          if (!active) {
-            return;
-          }
-          setError(requestError instanceof Error ? requestError.message : "Unable to load saved items.");
-        });
+      if (!hasToken) {
+        if (!active) {
+          return;
+        }
+        setWatchlisted(false);
+        setFavorited(false);
+        return;
+      }
+
+      try {
+        const { watchlisted: nextWatchlisted, favorited: nextFavorited } = await fetchSavedStateData(movie.id);
+        if (!active) {
+          return;
+        }
+        setWatchlisted(nextWatchlisted);
+        setFavorited(nextFavorited);
+      } catch (requestError) {
+        if (!active) {
+          return;
+        }
+        setError(requestError instanceof Error ? requestError.message : "Unable to load saved items.");
+      }
     }
+
+    void loadEngagement();
 
     return () => {
       active = false;
     };
-  }, [movie.id, authenticated]);
+  }, [movie.id]);
 
   async function handleAction(action: string, callback: () => Promise<void>) {
     if (!getAccessToken()) {
@@ -262,7 +280,7 @@ export default function MovieEngagementClient({ initialMovie }: MovieEngagementC
           </button>
         </div>
 
-        {!authenticated && (
+        {authResolved && !authenticated && (
           <p className="text-sm text-white/55">
             <Link href="/login" className="font-semibold text-white hover:text-[#ff7178]">Sign in</Link> to manage your watchlist, favorites, ratings, and reviews.
           </p>

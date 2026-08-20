@@ -62,6 +62,7 @@ Copy-Item .env.example .env
 - `DATABASE_URL`
 - `REDIS_URL`
 - `JWT_SECRET_KEY`
+- `ALLOWED_ORIGINS`
 - `NEXT_PUBLIC_API_BASE_URL`
 - `INTERNAL_API_BASE_URL`
 - `RATE_LIMIT_REQUESTS`
@@ -69,6 +70,8 @@ Copy-Item .env.example .env
 - `AI_PROVIDER`
 
 The backend loads `.env` from the repository root and also supports `backend/.env` for backend-only local overrides.
+
+For local browser work, include both `http://localhost:3000` and `http://127.0.0.1:3000` in `ALLOWED_ORIGINS`.
 
 ## Run Locally With Docker
 
@@ -282,7 +285,7 @@ npm run build
 
 Current backend status:
 
-- `26` passing backend tests
+- `27` passing backend tests
 
 The backend suite covers:
 

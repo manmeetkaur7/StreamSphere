@@ -22,6 +22,7 @@ from app.schemas.content import (
 from app.schemas.engagement import RatingRequest, RatingResponse, ReviewCreateRequest, ReviewResponse
 from app.services.movie_views import build_movie_select, movie_response_from_row, movie_response_list_from_rows
 from app.services.recommendation_service import invalidate_user_recommendation_cache
+from app.services.trending_service import get_trending_movie_rows
 
 router = APIRouter(prefix="/movies", tags=["movies"])
 
@@ -129,6 +130,11 @@ def list_movies(
         page_size=page_size,
         total_pages=ceil(total / page_size) if total else 0,
     )
+
+
+@router.get("/trending", response_model=list[MovieResponse])
+def list_trending_movies(db: Session = Depends(get_db)) -> list[MovieResponse]:
+    return movie_response_list_from_rows(get_trending_movie_rows(db, limit=20))
 
 
 @router.get("/{movie_id}", response_model=MovieResponse)

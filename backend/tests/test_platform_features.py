@@ -195,3 +195,14 @@ def test_openapi_contains_production_metadata(monkeypatch) -> None:
     assert "AI-assisted discovery" in payload["info"]["description"]
     assert {tag["name"] for tag in payload["tags"]} >= {"health", "admin", "search"}
     client.close()
+
+
+def test_movies_trending_route_is_not_shadowed_by_movie_detail(monkeypatch) -> None:
+    app = _build_app(monkeypatch)
+    client = TestClient(app)
+
+    response = client.get("/movies/trending")
+
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+    client.close()

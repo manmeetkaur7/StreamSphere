@@ -58,11 +58,19 @@ class Settings:
             ).split(",")
             if path.strip()
         )
-        self.allowed_origins = tuple(
+        configured_origins = [
             origin.strip()
             for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
             if origin.strip()
-        )
+        ]
+        local_dev_origins = [
+            f"http://localhost:{port}"
+            for port in (3000, 3001, 3002)
+        ] + [
+            f"http://127.0.0.1:{port}"
+            for port in (3000, 3001, 3002)
+        ]
+        self.allowed_origins = tuple(dict.fromkeys([*configured_origins, *local_dev_origins]))
 
 
 @lru_cache

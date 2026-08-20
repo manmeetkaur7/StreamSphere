@@ -20,7 +20,8 @@ function toMovieCard(movie: Movie): MovieCardProps {
 }
 
 export default function HomeExperience() {
-  const [authenticated, setAuthenticated] = useState(() => Boolean(getAccessToken()));
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authResolved, setAuthResolved] = useState(false);
   const [home, setHome] = useState<HomeResponse | null>(null);
   const [recommendations, setRecommendations] = useState<RecommendationResponse | null>(null);
   const [publicTrending, setPublicTrending] = useState<Movie[]>([]);
@@ -37,7 +38,14 @@ export default function HomeExperience() {
       try {
         setError(null);
         setLoadingHome(true);
-        if (getAccessToken()) {
+        const hasToken = Boolean(getAccessToken());
+        if (!active) {
+          return;
+        }
+        setAuthenticated(hasToken);
+        setAuthResolved(true);
+
+        if (hasToken) {
           const [homePayload, recommendationPayload] = await Promise.all([
             fetchWithAuth<HomeResponse>("/home"),
             fetchWithAuth<RecommendationResponse>("/recommendations"),
@@ -66,6 +74,7 @@ export default function HomeExperience() {
         if (message.includes("Could not validate credentials")) {
           clearAccessToken();
           setAuthenticated(false);
+          setAuthResolved(true);
           const trending = await fetchTrendingMovies();
           if (!active) {
             return;
@@ -78,6 +87,7 @@ export default function HomeExperience() {
         }
       } finally {
         if (active) {
+          setAuthResolved(true);
           setLoadingHome(false);
         }
       }
@@ -162,7 +172,7 @@ export default function HomeExperience() {
               StreamSphere now combines catalog trends, your activity, and natural-language search to surface more relevant picks.
             </p>
           </div>
-          {!authenticated ? (
+          {authResolved && !authenticated ? (
             <p className="max-w-md text-sm leading-6 text-white/55">
               <Link href="/login" className="font-semibold text-white hover:text-[#ff7178]">
                 Sign in

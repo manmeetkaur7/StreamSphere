@@ -8,36 +8,67 @@ import type { Profile } from "@/lib/catalog";
 import { formatDuration } from "@/lib/catalog";
 
 export default function ProfileDashboard() {
-  const hasToken = Boolean(getAccessToken());
+  const [authenticated, setAuthenticated] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(hasToken);
-  const [error, setError] = useState<string | null>(hasToken ? null : "Please sign in to view your profile.");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!hasToken) {
-      return;
-    }
+    let active = true;
 
-    void fetchWithAuth<Profile>("/profile")
-      .then((payload) => {
+    async function loadProfile() {
+      const hasToken = Boolean(getAccessToken());
+      if (!active) {
+        return;
+      }
+
+      setAuthenticated(hasToken);
+
+      if (!hasToken) {
+        setLoading(false);
+        setError("Please sign in to view your profile.");
+        return;
+      }
+
+      try {
+        const payload = await fetchWithAuth<Profile>("/profile");
+        if (!active) {
+          return;
+        }
         setProfile(payload);
         setError(null);
-      })
-      .catch((requestError) => {
+      } catch (requestError) {
+        if (!active) {
+          return;
+        }
+
         const message = requestError instanceof Error ? requestError.message : "Unable to load your profile.";
         if (message.includes("Could not validate credentials")) {
           clearAccessToken();
+          setAuthenticated(false);
+          setError("Please sign in to view your profile.");
+        } else {
+          setError(message);
         }
-        setError(message);
-      })
-      .finally(() => setLoading(false));
-  }, [hasToken]);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   if (loading) {
     return <p className="text-sm text-white/60">Loading your profile...</p>;
   }
 
-  if (!profile) {
+  if (!authenticated || !profile) {
     return (
       <div className="rounded-[2rem] border border-dashed border-white/12 bg-[#0d0d0d] p-8 text-center">
         <h2 className="text-2xl font-semibold text-white">Profile unavailable</h2>

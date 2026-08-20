@@ -7,12 +7,9 @@ from app.core.auth import get_current_admin, get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.ai import MovieSummaryResponse, ProgressResponse, ProgressUpsertRequest
-from app.schemas.content import MovieResponse
 from app.services.ai_provider import AIProvider, get_ai_provider
-from app.services.movie_views import movie_response_list_from_rows
 from app.services.progress_service import upsert_progress
 from app.services.summary_service import get_or_generate_summary
-from app.services.trending_service import get_trending_movie_rows
 
 router = APIRouter(prefix="/movies", tags=["movies"])
 
@@ -25,11 +22,6 @@ def _completed_progress_response(movie_id: int) -> ProgressResponse:
         last_watched=datetime.now(timezone.utc),
         completed=True,
     )
-
-
-@router.get("/trending", response_model=list[MovieResponse])
-def list_trending_movies(db: Session = Depends(get_db)) -> list[MovieResponse]:
-    return movie_response_list_from_rows(get_trending_movie_rows(db, limit=20))
 
 
 @router.get("/{movie_id}/summary", response_model=MovieSummaryResponse)
