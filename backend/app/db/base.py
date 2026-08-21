@@ -9,11 +9,13 @@ class Base(DeclarativeBase):
 
 
 def register_models() -> None:
+    from app.models.activity_event import ActivityEvent  # noqa: F401
     from app.models.favorite import Favorite  # noqa: F401
     from app.models.genre import Genre  # noqa: F401
     from app.models.movie import Movie  # noqa: F401
     from app.models.movie_genre import MovieGenre  # noqa: F401
     from app.models.movie_summary import MovieSummary  # noqa: F401
+    from app.models.notification import Notification  # noqa: F401
     from app.models.rating import Rating  # noqa: F401
     from app.models.recommendation_cache import RecommendationCache  # noqa: F401
     from app.models.review import Review  # noqa: F401

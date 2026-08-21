@@ -69,3 +69,8 @@ class Movie(Base):
         passive_deletes=True,
         uselist=False,
     )
+    activity_events = relationship(
+        "ActivityEvent",
+        back_populates="movie",
+        passive_deletes=True,
+    )

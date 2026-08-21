@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, select
+from sqlalchemy import select, text
 
 from app import main
 from app.core.auth import get_current_user
@@ -11,10 +11,12 @@ from app.db.base import Base, ensure_schema_compatibility, register_models
 from app.db.database import engine
 from app.db.session import SessionLocal
 from app.models.favorite import Favorite
+from app.models.activity_event import ActivityEvent
 from app.models.genre import Genre
 from app.models.movie import Movie
 from app.models.movie_genre import MovieGenre
 from app.models.movie_summary import MovieSummary
+from app.models.notification import Notification
 from app.models.rating import Rating
 from app.models.recommendation_cache import RecommendationCache
 from app.models.review import Review
@@ -37,17 +39,13 @@ def setup_module() -> None:
 
 def _reset_tables() -> None:
     with engine.begin() as connection:
-        connection.execute(delete(WatchProgress))
-        connection.execute(delete(RecommendationCache))
-        connection.execute(delete(MovieSummary))
-        connection.execute(delete(Watchlist))
-        connection.execute(delete(Favorite))
-        connection.execute(delete(Rating))
-        connection.execute(delete(Review))
-        connection.execute(delete(MovieGenre))
-        connection.execute(delete(Movie))
-        connection.execute(delete(Genre))
-        connection.execute(delete(User))
+        connection.execute(
+            text(
+                "TRUNCATE TABLE activity_events, notifications, watch_progress, recommendation_cache, "
+                "movie_summaries, watchlists, favorites, ratings, reviews, movie_genres, movies, genres, users "
+                "RESTART IDENTITY CASCADE"
+            )
+        )
 
 
 def _create_user(username: str, email: str, *, is_admin: bool = False) -> User:
@@ -108,17 +106,22 @@ def _create_movie(
 
 
 @pytest.fixture
-def user_client(monkeypatch):
+def reset_test_state():
     _reset_tables()
-    user = _create_user("ai-user", "ai-user@example.com")
-    client = _build_client(monkeypatch, user)
-    yield client, user
-    client.close()
+    yield
     _reset_tables()
 
 
 @pytest.fixture
-def admin_client(monkeypatch):
+def user_client(monkeypatch, reset_test_state):
+    user = _create_user("ai-user", "ai-user@example.com")
+    client = _build_client(monkeypatch, user)
+    yield client, user
+    client.close()
+
+
+@pytest.fixture
+def admin_client(monkeypatch, reset_test_state):
     admin = _create_user("admin-user", "admin@example.com", is_admin=True)
     client = _build_client(monkeypatch, admin)
     yield client, admin

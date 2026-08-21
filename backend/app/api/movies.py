@@ -1,10 +1,10 @@
 from math import ceil
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_optional_current_user
 from app.db.session import get_db
 from app.models.genre import Genre
 from app.models.movie import Movie
@@ -20,6 +20,8 @@ from app.schemas.content import (
     UpdateMovie,
 )
 from app.schemas.engagement import RatingRequest, RatingResponse, ReviewCreateRequest, ReviewResponse
+from app.services.activity_service import record_activity
+from app.services.background_jobs import background_job_dispatcher
 from app.services.movie_views import build_movie_select, movie_response_from_row, movie_response_list_from_rows
 from app.services.recommendation_service import invalidate_user_recommendation_cache
 from app.services.trending_service import get_trending_movie_rows
@@ -138,8 +140,22 @@ def list_trending_movies(db: Session = Depends(get_db)) -> list[MovieResponse]:
 
 
 @router.get("/{movie_id}", response_model=MovieResponse)
-def get_movie(movie_id: int, db: Session = Depends(get_db)) -> MovieResponse:
-    return movie_response_from_row(_movie_detail_row(db, movie_id))
+def get_movie(
+    movie_id: int,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+) -> MovieResponse:
+    row = _movie_detail_row(db, movie_id)
+    if current_user is not None:
+        record_activity(
+            db,
+            user_id=current_user.id,
+            event_type="movie_view",
+            movie_id=movie_id,
+            metadata={"title": row[0].title},
+            commit=True,
+        )
+    return movie_response_from_row(row)
 
 
 @router.post("", response_model=MovieResponse, status_code=status.HTTP_201_CREATED)
@@ -217,6 +233,7 @@ def delete_movie(
 def create_rating(
     movie_id: int,
     payload: RatingRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Rating:
@@ -236,7 +253,16 @@ def create_rating(
     db.add(rating)
     db.commit()
     db.refresh(rating)
+    record_activity(db, user_id=current_user.id, event_type="rating", movie_id=movie_id, metadata={"rating": payload.rating}, commit=True)
     invalidate_user_recommendation_cache(current_user.id)
+    background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
+    background_job_dispatcher.queue_notification(
+        background_tasks,
+        user_id=current_user.id,
+        notification_type="system_notification",
+        title="Rating saved",
+        message="Your rating was saved and recommendations will refresh shortly.",
+    )
     return rating
 
 
@@ -244,6 +270,7 @@ def create_rating(
 def update_rating(
     movie_id: int,
     payload: RatingRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Rating:
@@ -256,7 +283,9 @@ def update_rating(
     rating.rating = payload.rating
     db.commit()
     db.refresh(rating)
+    record_activity(db, user_id=current_user.id, event_type="rating", movie_id=movie_id, metadata={"rating": payload.rating}, commit=True)
     invalidate_user_recommendation_cache(current_user.id)
+    background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
     return rating
 
 
@@ -296,6 +325,7 @@ def list_reviews(movie_id: int, db: Session = Depends(get_db)) -> list[ReviewRes
 def create_review(
     movie_id: int,
     payload: ReviewCreateRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ReviewResponse:
@@ -312,5 +342,30 @@ def create_review(
     db.add(review)
     db.commit()
     db.refresh(review)
+    record_activity(
+        db,
+        user_id=current_user.id,
+        event_type="review",
+        movie_id=movie_id,
+        metadata={"rating": payload.rating, "title": payload.title.strip()[:80]},
+        commit=True,
+    )
     invalidate_user_recommendation_cache(current_user.id)
+    background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
+    peer_user_ids = set(
+        db.scalars(
+            select(Review.user_id).where(
+                Review.movie_id == movie_id,
+                Review.user_id != current_user.id,
+            )
+        ).all()
+    )
+    for peer_user_id in peer_user_ids:
+        background_job_dispatcher.queue_notification(
+            background_tasks,
+            user_id=peer_user_id,
+            notification_type="review_interaction",
+            title="New review interaction",
+            message=f"{current_user.username} added a new review on a movie you reviewed.",
+        )
     return _serialize_review(review)

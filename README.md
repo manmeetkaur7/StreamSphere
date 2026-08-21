@@ -1,6 +1,6 @@
 # StreamSphere
 
-StreamSphere is a full-stack streaming discovery platform with a Next.js frontend, a FastAPI backend, PostgreSQL persistence, Redis-backed caching with graceful fallback, AI-assisted discovery features, and Docker-based local orchestration.
+StreamSphere is a full-stack streaming discovery platform with a Next.js frontend, a FastAPI backend, PostgreSQL persistence, Redis-backed caching with graceful fallback, AI-assisted discovery features, real-time notifications, admin analytics, and Docker-based local orchestration.
 
 ## Stack
 
@@ -18,6 +18,10 @@ StreamSphere is a full-stack streaming discovery platform with a Next.js fronten
 - Structured JSON request logging with request IDs
 - Expanded `/health` endpoint with database, Redis, uptime, version, and environment details
 - OpenAPI metadata with tagged sections and operational descriptions
+- Real-time notifications with WebSocket delivery and frontend REST fallback
+- Admin moderation, stats, and platform analytics APIs
+- Personal profile insights backed by SQL activity aggregates
+- Background job abstraction built on FastAPI `BackgroundTasks`
 - Dockerfiles for backend and frontend plus a complete `docker-compose.yml`
 - CI workflow for backend tests, frontend lint/build, and Compose validation
 
@@ -140,6 +144,43 @@ Status behavior:
 - `degraded`: the app is serving traffic with a fallback, such as in-memory cache
 - `unavailable`: a required dependency such as the database is unavailable
 
+## Sprint 8 Architecture
+
+### Notifications
+
+- `notifications` stores user-scoped notification events, read state, and timestamps.
+- REST endpoints provide list, unread count, mark-as-read, mark-all-read, and delete operations.
+- WebSocket clients connect to `/ws/notifications` with the existing JWT access token.
+- The backend maintains a per-user connection manager so multiple sessions for the same account receive the same events.
+- The frontend bell uses WebSockets when available and falls back to REST refresh if the socket disconnects.
+
+### Admin Authorization
+
+- `users.is_admin` gates admin-only routes through `require_admin`.
+- Authenticated non-admin users receive `403 Forbidden` on admin routes.
+- `users.is_active` blocks inactive users from logging in or authenticating protected endpoints.
+
+Promote a local admin safely:
+
+```sql
+UPDATE users
+SET is_admin = TRUE
+WHERE email = 'your-local-user@example.com';
+```
+
+Do not hardcode an admin password or admin email in application code.
+
+### Analytics
+
+- `activity_events` tracks `login`, `movie_view`, `ai_search`, `rating`, `review`, `favorite`, `watchlist_add`, `progress_update`, and `recommendation_generated`.
+- Event metadata is sanitized before persistence so keys like `password`, `token`, `jwt`, `authorization`, `api_key`, and `secret` are removed.
+- Profile insights and admin analytics use SQL aggregates instead of loading full tables into Python.
+
+### Background Jobs
+
+- `BackgroundJobDispatcher` queues notification generation, recommendation refreshes, and AI summary regeneration through FastAPI `BackgroundTasks`.
+- Routes depend on the abstraction so a real queue such as Celery or RQ can replace it later without route rewrites.
+
 ## Caching
 
 Redis caching is enabled with `REDIS_ENABLED=true`.
@@ -209,12 +250,14 @@ Swagger UI and ReDoc are enabled by default and grouped with tagged sections suc
 - `authentication`
 - `movies`
 - `genres`
+- `notifications`
 - `watchlist`
 - `favorites`
 - `reviews`
 - `recommendations`
 - `search`
 - `home`
+- `profile`
 - `admin`
 
 You can disable docs in restricted environments with:
@@ -240,6 +283,11 @@ Authenticated endpoints:
 
 - `POST /auth/register`
 - `POST /auth/login`
+- `GET /notifications`
+- `GET /notifications/unread-count`
+- `PUT /notifications/{id}/read`
+- `PUT /notifications/read-all`
+- `DELETE /notifications/{id}`
 - `GET /watchlist`
 - `POST /watchlist/{movie_id}`
 - `DELETE /watchlist/{movie_id}`
@@ -252,13 +300,33 @@ Authenticated endpoints:
 - `GET /recommendations`
 - `GET /home`
 - `GET /profile`
+- `GET /profile/insights`
 - movie CRUD, rating, and review maintenance endpoints
+
+Real-time endpoint:
+
+- WebSocket `/ws/notifications?token=<jwt>`
 
 Admin endpoints:
 
+- `GET /admin/stats`
+- `GET /admin/users`
+- `GET /admin/movies`
+- `GET /admin/reviews`
+- `PUT /admin/users/{id}/status`
+- `DELETE /admin/reviews/{id}`
+- `GET /admin/analytics`
 - `POST /movies/{id}/summary/regenerate`
 - `POST /admin/recommendations/recompute`
 - `DELETE /admin/recommendations/cache`
+
+Frontend pages:
+
+- `/`
+- `/movies`
+- `/movies/[id]`
+- `/profile`
+- `/admin` for admins only
 
 ## Testing and Validation
 
@@ -285,7 +353,7 @@ npm run build
 
 Current backend status:
 
-- `27` passing backend tests
+- `37` passing backend tests
 
 The backend suite covers:
 
@@ -299,6 +367,10 @@ The backend suite covers:
 - rate limiting
 - structured logging
 - OpenAPI metadata
+- notifications and ownership checks
+- WebSocket authentication and delivery
+- admin permissions, moderation, stats, and analytics
+- personal insights and activity tracking
 
 ## Continuous Integration
 

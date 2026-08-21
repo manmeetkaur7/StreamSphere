@@ -8,6 +8,7 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import RegisterRequest, TokenResponse, UserResponse
+from app.services.activity_service import record_activity
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -64,5 +65,7 @@ def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This account is inactive.",
         )
+    record_activity(db, user_id=user.id, event_type="login")
+    db.commit()
 
     return TokenResponse(access_token=create_access_token(str(user.id)))

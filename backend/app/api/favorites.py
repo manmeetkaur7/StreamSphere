@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,6 +8,8 @@ from app.models.favorite import Favorite
 from app.models.movie import Movie
 from app.models.user import User
 from app.schemas.engagement import FavoriteItemResponse
+from app.services.activity_service import record_activity
+from app.services.background_jobs import background_job_dispatcher
 from app.services.movie_views import build_movie_select, movie_response_from_row
 from app.services.recommendation_service import invalidate_user_recommendation_cache
 
@@ -42,6 +44,7 @@ def list_favorites(
 @router.post("/{movie_id}", response_model=FavoriteItemResponse, status_code=status.HTTP_201_CREATED)
 def add_favorite(
     movie_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FavoriteItemResponse:
@@ -58,7 +61,16 @@ def add_favorite(
     db.add(entry)
     db.commit()
     db.refresh(entry)
+    record_activity(db, user_id=current_user.id, event_type="favorite", movie_id=movie_id, commit=True)
     invalidate_user_recommendation_cache(current_user.id)
+    background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
+    background_job_dispatcher.queue_notification(
+        background_tasks,
+        user_id=current_user.id,
+        notification_type="system_notification",
+        title="Favorite saved",
+        message="This movie was added to your favorites.",
+    )
     movie_row = db.execute(build_movie_select().where(Movie.id == movie_id)).one()
     return FavoriteItemResponse(
         id=entry.id,

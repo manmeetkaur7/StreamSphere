@@ -3,7 +3,7 @@ from contextlib import contextmanager
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import text
 
 from app import main
 from app.core.auth import get_current_user
@@ -11,12 +11,16 @@ from app.db.base import Base, register_models
 from app.db.database import engine
 from app.db.session import SessionLocal
 from app.models.favorite import Favorite
+from app.models.activity_event import ActivityEvent
 from app.models.genre import Genre
 from app.models.movie import Movie
 from app.models.movie_genre import MovieGenre
+from app.models.notification import Notification
 from app.models.rating import Rating
+from app.models.recommendation_cache import RecommendationCache
 from app.models.review import Review
 from app.models.user import User
+from app.models.watch_progress import WatchProgress
 from app.models.watchlist import Watchlist
 
 
@@ -32,14 +36,13 @@ def setup_module() -> None:
 
 def _reset_tables() -> None:
     with engine.begin() as connection:
-        connection.execute(delete(Watchlist))
-        connection.execute(delete(Favorite))
-        connection.execute(delete(Rating))
-        connection.execute(delete(Review))
-        connection.execute(delete(MovieGenre))
-        connection.execute(delete(Movie))
-        connection.execute(delete(Genre))
-        connection.execute(delete(User))
+        connection.execute(
+            text(
+                "TRUNCATE TABLE activity_events, notifications, watch_progress, recommendation_cache, "
+                "watchlists, favorites, ratings, reviews, movie_genres, movies, genres, users "
+                "RESTART IDENTITY CASCADE"
+            )
+        )
 
 
 def _create_user(username: str, email: str) -> User:

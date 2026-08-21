@@ -11,6 +11,7 @@ from app.models.recommendation_cache import RecommendationCache
 from app.models.review import Review
 from app.models.user import User
 from app.models.watchlist import Watchlist
+from app.services.activity_service import record_activity
 from app.core.config import get_settings
 from app.schemas.ai import RecommendationResponse
 from app.schemas.content import GenreResponse
@@ -154,6 +155,12 @@ def compute_recommendations(db: Session, current_user: User, *, persist: bool = 
         cache.recommended_movie_ids = ",".join(str(movie.id) for movie in recommended_movies)
         cache.recommended_genres = ",".join(genre_labels)
         cache.reason_for_recommendation = reason
+        record_activity(
+            db,
+            user_id=current_user.id,
+            event_type="recommendation_generated",
+            metadata={"recommended_count": len(recommended_movies)},
+        )
         db.commit()
         get_cache_service().set_json(
             _recommendation_cache_key(current_user.id),

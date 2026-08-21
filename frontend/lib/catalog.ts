@@ -165,6 +165,7 @@ export interface ProfileReview extends Review {
 export interface Profile {
   username: string;
   email: string;
+  is_admin: boolean;
   account_creation_date: string;
   favorite_count: number;
   watchlist_count: number;
@@ -175,8 +176,131 @@ export interface Profile {
   watchlist_movies: Movie[];
 }
 
+export interface NotificationItem {
+  id: number;
+  user_id: string;
+  type: string;
+  title: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationUnreadCount {
+  unread_count: number;
+}
+
+export interface NotificationEvent {
+  event: string;
+  notification: NotificationItem;
+  unread_count: number;
+}
+
+export interface GenreInsight {
+  name: string;
+  count: number;
+}
+
+export interface ActivityEvent {
+  id: number;
+  event_type: string;
+  movie_id: number | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface ProfileInsights {
+  favorite_genres: GenreInsight[];
+  most_viewed_genres: GenreInsight[];
+  average_rating_given: number;
+  movies_completed: number;
+  movies_in_progress: number;
+  total_watchlist_entries: number;
+  total_reviews: number;
+  recent_activity: ActivityEvent[];
+}
+
+export interface AdminStats {
+  total_users: number;
+  total_movies: number;
+  total_reviews: number;
+  total_ratings: number;
+  total_watchlist_entries: number;
+  total_favorites: number;
+  total_ai_searches: number;
+  total_recommendations_generated: number;
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  email: string;
+  is_admin: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminReview {
+  id: number;
+  movie_id: number;
+  movie_title: string;
+  user_id: string;
+  username: string;
+  title: string;
+  body: string;
+  rating: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnalyticsMovieMetric {
+  movie: Movie;
+  count: number;
+}
+
+export interface AnalyticsGenreMetric {
+  name: string;
+  count: number;
+}
+
+export interface DailyActiveUser {
+  day: string;
+  active_users: number;
+}
+
+export interface PlatformAnalytics {
+  most_viewed_movies: AnalyticsMovieMetric[];
+  most_favorited_movies: AnalyticsMovieMetric[];
+  most_watchlisted_movies: AnalyticsMovieMetric[];
+  top_rated_movies: AnalyticsMovieMetric[];
+  most_reviewed_movies: AnalyticsMovieMetric[];
+  popular_genres: AnalyticsGenreMetric[];
+  ai_search_volume: number;
+  daily_active_users: DailyActiveUser[];
+}
+
 export function formatDuration(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   return `${hours}h ${remainingMinutes.toString().padStart(2, "0")}m`;
+}
+
+export function formatRelativeTimestamp(timestamp: string) {
+  const target = new Date(timestamp).getTime();
+  const deltaSeconds = Math.max(1, Math.round((Date.now() - target) / 1000));
+
+  if (deltaSeconds < 60) {
+    return "just now";
+  }
+  if (deltaSeconds < 3600) {
+    return `${Math.floor(deltaSeconds / 60)}m ago`;
+  }
+  if (deltaSeconds < 86400) {
+    return `${Math.floor(deltaSeconds / 3600)}h ago`;
+  }
+  if (deltaSeconds < 604800) {
+    return `${Math.floor(deltaSeconds / 86400)}d ago`;
+  }
+
+  return new Date(timestamp).toLocaleDateString();
 }

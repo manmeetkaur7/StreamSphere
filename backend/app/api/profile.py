@@ -11,6 +11,8 @@ from app.models.review import Review
 from app.models.user import User
 from app.models.watchlist import Watchlist
 from app.schemas.engagement import ProfileResponse, ProfileReviewResponse
+from app.schemas.platform import ProfileInsightsResponse
+from app.services.insights_service import build_profile_insights
 from app.services.movie_views import build_movie_select, movie_response_from_row
 
 router = APIRouter(tags=["profile"])
@@ -70,6 +72,7 @@ def get_profile(
     return ProfileResponse(
         username=current_user.username,
         email=current_user.email,
+        is_admin=current_user.is_admin,
         account_creation_date=current_user.created_at,
         favorite_count=len(favorite_entries),
         watchlist_count=len(watchlist_entries),
@@ -79,3 +82,11 @@ def get_profile(
         favorite_movies=[movies_by_id[entry.movie_id] for entry in favorite_entries if entry.movie_id in movies_by_id],
         watchlist_movies=[movies_by_id[entry.movie_id] for entry in watchlist_entries if entry.movie_id in movies_by_id],
     )
+
+
+@router.get("/profile/insights", response_model=ProfileInsightsResponse)
+def get_profile_insights(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ProfileInsightsResponse:
+    return build_profile_insights(db, current_user)

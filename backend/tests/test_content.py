@@ -2,14 +2,16 @@ from contextlib import contextmanager
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import text
 
 from app.core.auth import get_current_user
 from app.db.base import Base, register_models
 from app.db.database import engine
+from app.models.activity_event import ActivityEvent
 from app.models.genre import Genre
 from app.models.movie import Movie
 from app.models.movie_genre import MovieGenre
+from app.models.notification import Notification
 from app.models.user import User
 from app import main
 
@@ -21,9 +23,12 @@ def no_op_lifespan(_: object):
 
 def _reset_content_tables() -> None:
     with engine.begin() as connection:
-        connection.execute(delete(MovieGenre))
-        connection.execute(delete(Movie))
-        connection.execute(delete(Genre))
+        connection.execute(
+            text(
+                "TRUNCATE TABLE activity_events, notifications, movie_genres, movies, genres "
+                "RESTART IDENTITY CASCADE"
+            )
+        )
 
 
 def _build_client(monkeypatch) -> TestClient:
@@ -74,8 +79,8 @@ def test_genre_crud(client: TestClient) -> None:
 
 
 def test_movie_crud(client: TestClient) -> None:
-    action = client.post("/genres", json={"name": "Action"}).json()
-    drama = client.post("/genres", json={"name": "Drama"}).json()
+    action = client.post("/genres", json={"name": "Action CRUD"}).json()
+    drama = client.post("/genres", json={"name": "Drama CRUD"}).json()
 
     payload = {
         "title": "Skyline Pursuit",
@@ -92,7 +97,7 @@ def test_movie_crud(client: TestClient) -> None:
     assert created.status_code == 201
     movie = created.json()
     assert movie["title"] == payload["title"]
-    assert [genre["name"] for genre in movie["genres"]] == ["Action", "Drama"]
+    assert [genre["name"] for genre in movie["genres"]] == ["Action CRUD", "Drama CRUD"]
 
     fetched = client.get(f"/movies/{movie['id']}")
     assert fetched.status_code == 200
@@ -110,7 +115,7 @@ def test_movie_crud(client: TestClient) -> None:
     updated_movie = updated.json()
     assert updated_movie["language"] == "Spanish"
     assert updated_movie["duration_minutes"] == 120
-    assert [genre["name"] for genre in updated_movie["genres"]] == ["Drama"]
+    assert [genre["name"] for genre in updated_movie["genres"]] == ["Drama CRUD"]
 
     deleted = client.delete(f"/movies/{movie['id']}")
     assert deleted.status_code == 204
@@ -118,8 +123,10 @@ def test_movie_crud(client: TestClient) -> None:
 
 
 def test_movie_search_and_filters(client: TestClient) -> None:
-    sci_fi = client.post("/genres", json={"name": "Sci-Fi"}).json()
-    comedy = client.post("/genres", json={"name": "Comedy"}).json()
+    sci_fi_name = "Sci-Fi Search"
+    comedy_name = "Comedy Search"
+    sci_fi = client.post("/genres", json={"name": sci_fi_name}).json()
+    comedy = client.post("/genres", json={"name": comedy_name}).json()
 
     movies = [
         {
@@ -164,7 +171,7 @@ def test_movie_search_and_filters(client: TestClient) -> None:
     searched_items = searched.json()["items"]
     assert [movie["title"] for movie in searched_items] == ["Lunar Laughs"]
 
-    filtered = client.get("/movies", params={"genre": "Sci-Fi", "language": "English"})
+    filtered = client.get("/movies", params={"genre": sci_fi_name, "language": "English"})
     assert filtered.status_code == 200
     filtered_titles = [movie["title"] for movie in filtered.json()["items"]]
     assert filtered_titles == ["Lunar Laughs", "Solar Drift"]

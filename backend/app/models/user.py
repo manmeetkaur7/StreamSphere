@@ -77,3 +77,13 @@ class User(Base):
         passive_deletes=True,
         uselist=False,
     )
+    notifications = relationship(
+        "Notification",
+        back_populates="user",
+        passive_deletes=True,
+    )
+    activity_events = relationship(
+        "ActivityEvent",
+        back_populates="user",
+        passive_deletes=True,
+    )

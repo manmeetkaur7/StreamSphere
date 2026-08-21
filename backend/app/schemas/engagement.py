@@ -64,6 +64,7 @@ class ProfileReviewResponse(ReviewResponse):
 class ProfileResponse(BaseModel):
     username: str
     email: str
+    is_admin: bool
     account_creation_date: datetime
     favorite_count: int
     watchlist_count: int
