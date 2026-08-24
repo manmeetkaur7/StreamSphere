@@ -37,4 +37,6 @@ def test_unhandled_exceptions_return_json_500(monkeypatch) -> None:
     response = client.get("/boom")
 
     assert response.status_code == 500
-    assert response.json() == {"detail": "Internal Server Error"}
+    payload = response.json()
+    assert payload["detail"] == "Internal Server Error"
+    assert payload["error"]["code"] == "internal_server_error"

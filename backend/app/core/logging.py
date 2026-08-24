@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import Request
 
 from app.core.config import get_settings
+from app.services.metrics import get_metrics_registry
 
 
 def configure_logging() -> None:
@@ -28,9 +29,21 @@ async def structured_logging_middleware(request: Request, call_next):
     request_id = request.headers.get("X-Request-ID", str(uuid4()))
     request.state.request_id = request_id
     started_at = perf_counter()
-    response = await call_next(request)
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+    except Exception:
+        duration_ms = round((perf_counter() - started_at) * 1000, 2)
+        get_metrics_registry().observe_latency(duration_ms)
+        get_metrics_registry().increment("http.requests.errors")
+        raise
+
     duration_ms = round((perf_counter() - started_at) * 1000, 2)
     response.headers["X-Request-ID"] = request_id
+    get_metrics_registry().observe_latency(duration_ms)
+    if status_code >= 400:
+        get_metrics_registry().increment("http.requests.errors")
 
     if settings.structured_logging_enabled:
         logging.getLogger("streamsphere.request").info(

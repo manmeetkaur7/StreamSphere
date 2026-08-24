@@ -4,6 +4,8 @@ from uuid import UUID
 
 from fastapi import WebSocket
 
+from app.services.metrics import get_metrics_registry
+
 
 class NotificationConnectionManager:
     def __init__(self) -> None:
@@ -12,12 +14,14 @@ class NotificationConnectionManager:
     async def connect(self, user_id: UUID, websocket: WebSocket) -> None:
         await websocket.accept()
         self._connections[user_id].add(websocket)
+        get_metrics_registry().increment("websocket.notifications.connections")
 
     def disconnect(self, user_id: UUID, websocket: WebSocket) -> None:
         sockets = self._connections.get(user_id)
         if not sockets:
             return
         sockets.discard(websocket)
+        get_metrics_registry().increment("websocket.notifications.disconnections")
         if not sockets:
             self._connections.pop(user_id, None)
 

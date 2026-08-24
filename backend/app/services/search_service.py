@@ -1,11 +1,12 @@
 from app.core.config import get_settings
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.movie import Movie
 from app.models.user import User
 from app.schemas.ai import AISearchResponse
 from app.services.activity_service import record_activity
+from app.services.ai_resilience import run_ai_search
 from app.services.ai_provider import AIProvider
 from app.services.cache import get_cache_service, stable_cache_key
 from app.services.movie_views import build_movie_select, movie_response_list_from_rows
@@ -23,8 +24,14 @@ def search_movies_with_ai(
     if cached is not None:
         return AISearchResponse.model_validate(cached)
 
-    movies = list(db.scalars(select(Movie).order_by(Movie.release_year.desc(), Movie.id.desc())).all())
-    result = provider.search_movies(query, movies)
+    movies = list(
+        db.scalars(
+            select(Movie)
+            .options(selectinload(Movie.genres))
+            .order_by(Movie.release_year.desc(), Movie.id.desc())
+        ).all()
+    )
+    result = run_ai_search(provider, query, movies).payload
     rows = []
     if result.matching_movie_ids:
         row_by_id = {

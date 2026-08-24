@@ -375,6 +375,12 @@ def test_websocket_delivers_notification_events(client: TestClient) -> None:
         )
         assert response.status_code == 200
 
-        notification_event = websocket.receive_json()
-        assert notification_event["event"] == "notification.created"
-        assert notification_event["notification"]["title"] == "Movie completed"
+        received_titles: list[str] = []
+        for _ in range(3):
+            notification_event = websocket.receive_json()
+            assert notification_event["event"] == "notification.created"
+            received_titles.append(notification_event["notification"]["title"])
+            if notification_event["notification"]["title"] == "Movie completed":
+                break
+
+        assert "Movie completed" in received_titles

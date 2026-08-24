@@ -1,17 +1,27 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 import bcrypt
 from jose import jwt
 
 from app.core.config import get_settings
 
+_password_hasher = PasswordHasher()
+
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return _password_hasher.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    if hashed_password.startswith("$argon2"):
+        try:
+            return _password_hasher.verify(hashed_password, plain_password)
+        except VerifyMismatchError:
+            return False
+
     return bcrypt.checkpw(
         plain_password.encode("utf-8"),
         hashed_password.encode("utf-8"),

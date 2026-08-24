@@ -11,6 +11,7 @@ class Notification(Base):
     __table_args__ = (
         Index("ix_notifications_user_created_at", "user_id", "created_at"),
         Index("ix_notifications_user_is_read", "user_id", "is_read"),
+        Index("ix_notifications_user_read_created_at", "user_id", "is_read", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

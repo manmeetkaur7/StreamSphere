@@ -7,6 +7,7 @@ from app.api.favorites import router as favorites_router
 from app.api.genres import router as genres_router
 from app.api.health import router as health_router
 from app.api.home import router as home_router
+from app.api.metrics import router as metrics_router
 from app.api.movies import router as movies_router
 from app.api.notifications import router as notifications_router
 from app.api.notifications import websocket_router as notification_websocket_router
@@ -20,6 +21,7 @@ from app.api.watchlist import router as watchlist_router
 
 api_router = APIRouter()
 api_router.include_router(health_router)
+api_router.include_router(metrics_router)
 api_router.include_router(auth_router)
 api_router.include_router(genres_router)
 api_router.include_router(ai_movies_router)

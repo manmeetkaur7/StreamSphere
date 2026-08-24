@@ -5,12 +5,17 @@ from sqlalchemy.orm import Session
 from app.models.movie import Movie
 from app.models.movie_summary import MovieSummary
 from app.schemas.ai import MovieSummaryResponse
+from app.services.ai_resilience import run_ai_summary
 from app.services.ai_provider import AIProvider
 from app.services.cache import get_cache_service
 
 
 def _summary_cache_key(movie_id: int) -> str:
     return f"movie-summary:{movie_id}"
+
+
+def invalidate_movie_summary_cache(movie_id: int) -> None:
+    get_cache_service().delete(_summary_cache_key(movie_id))
 
 
 def _summary_response(summary: MovieSummary) -> MovieSummaryResponse:
@@ -54,7 +59,7 @@ def get_or_generate_summary(
         )
         return payload
 
-    generated = provider.summarize_movie(movie)
+    generated = run_ai_summary(provider, movie).payload
     if summary is None:
         summary = MovieSummary(
             movie_id=movie_id,

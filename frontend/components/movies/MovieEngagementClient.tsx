@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { clearAccessToken, fetchWithAuth, getAccessToken, resolveApiBaseUrl } from "@/lib/auth";
@@ -205,7 +206,15 @@ export default function MovieEngagementClient({ initialMovie }: MovieEngagementC
   return (
     <section className="grid gap-8 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
       <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#101010] shadow-[0_28px_56px_rgba(0,0,0,0.28)]">
-        <img src={movie.poster_url} alt={`${movie.title} poster`} className="aspect-[2/3] h-full w-full object-cover" />
+        <div className="relative aspect-[2/3]">
+          <Image
+            src={movie.poster_url}
+            alt={`${movie.title} poster`}
+            fill
+            sizes="(min-width: 1024px) 360px, 100vw"
+            className="object-cover"
+          />
+        </div>
       </div>
 
       <div className="space-y-8">

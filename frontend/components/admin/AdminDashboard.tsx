@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -195,7 +196,15 @@ export default function AdminDashboard() {
           <div className="mt-5 space-y-3">
             {movies.map((movie) => (
               <Link key={movie.id} href={`/movies/${movie.id}`} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20 hover:bg-white/[0.05]">
-                <img src={movie.poster_url} alt={`${movie.title} poster`} className="h-16 w-12 rounded-lg object-cover" />
+                <div className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg">
+                  <Image
+                    src={movie.poster_url}
+                    alt={`${movie.title} poster`}
+                    fill
+                    sizes="48px"
+                    className="object-cover"
+                  />
+                </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">{movie.title}</p>
                   <p className="mt-1 text-xs text-white/50">{movie.release_year} · {movie.language}</p>

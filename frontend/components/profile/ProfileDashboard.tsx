@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { clearAccessToken, fetchWithAuth, getAccessToken } from "@/lib/auth";
@@ -219,7 +220,15 @@ export default function ProfileDashboard() {
               ) : (
                 profile.favorite_movies.map((movie) => (
                   <Link key={movie.id} href={`/movies/${movie.id}`} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20 hover:bg-white/[0.05]">
-                    <img src={movie.poster_url} alt={`${movie.title} poster`} className="h-20 w-14 rounded-xl object-cover" />
+                    <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-xl">
+                      <Image
+                        src={movie.poster_url}
+                        alt={`${movie.title} poster`}
+                        fill
+                        sizes="56px"
+                        className="object-cover"
+                      />
+                    </div>
                     <div className="min-w-0">
                       <h3 className="truncate text-base font-semibold text-white">{movie.title}</h3>
                       <p className="mt-1 text-sm text-white/50">{movie.release_year} · {formatDuration(movie.duration_minutes)}</p>
@@ -238,7 +247,15 @@ export default function ProfileDashboard() {
               ) : (
                 profile.watchlist_movies.map((movie) => (
                   <Link key={movie.id} href={`/movies/${movie.id}`} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/20 hover:bg-white/[0.05]">
-                    <img src={movie.poster_url} alt={`${movie.title} poster`} className="h-20 w-14 rounded-xl object-cover" />
+                    <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-xl">
+                      <Image
+                        src={movie.poster_url}
+                        alt={`${movie.title} poster`}
+                        fill
+                        sizes="56px"
+                        className="object-cover"
+                      />
+                    </div>
                     <div className="min-w-0">
                       <h3 className="truncate text-base font-semibold text-white">{movie.title}</h3>
                       <p className="mt-1 text-sm text-white/50">{movie.release_year} · {movie.average_rating.toFixed(1)} avg</p>

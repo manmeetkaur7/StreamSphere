@@ -11,6 +11,7 @@ class WatchProgress(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "movie_id", name="uq_watch_progress_user_movie"),
         Index("ix_watch_progress_user_last_watched", "user_id", "last_watched"),
+        Index("ix_watch_progress_user_completed_last_watched", "user_id", "completed", "last_watched"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

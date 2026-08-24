@@ -82,6 +82,7 @@ def add_to_watchlist(
 @router.delete("/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_from_watchlist(
     movie_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -94,3 +95,4 @@ def remove_from_watchlist(
     db.delete(entry)
     db.commit()
     invalidate_user_recommendation_cache(current_user.id)
+    background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)

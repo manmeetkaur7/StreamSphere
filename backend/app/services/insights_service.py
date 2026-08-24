@@ -71,7 +71,7 @@ def build_profile_insights(db: Session, current_user: User) -> ProfileInsightsRe
             select(ActivityEvent)
             .where(ActivityEvent.user_id == current_user.id)
             .order_by(ActivityEvent.created_at.desc(), ActivityEvent.id.desc())
-            .limit(10)
+            .limit(20)
         ).all()
     )
 

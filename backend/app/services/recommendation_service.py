@@ -1,7 +1,7 @@
 from collections import Counter
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.favorite import Favorite
 from app.models.genre import Genre
@@ -59,7 +59,9 @@ def _top_genres_for_user(db: Session, current_user: User) -> list[Genre]:
     if not movie_ids:
         return []
 
-    movies = db.scalars(select(Movie).where(Movie.id.in_(movie_ids))).all()
+    movies = db.scalars(
+        select(Movie).options(selectinload(Movie.genres)).where(Movie.id.in_(movie_ids))
+    ).all()
     for movie in movies:
         for genre in movie.genres:
             genre_counter[genre.id] += 1
@@ -94,8 +96,10 @@ def _recommendation_candidates(db: Session, current_user: User) -> list[int]:
         genre_ids = [genre.id for genre in top_genres]
         preferred_movies = db.scalars(
             select(Movie)
+            .options(selectinload(Movie.genres))
             .join(Movie.genres)
             .where(Genre.id.in_(genre_ids))
+            .distinct()
             .order_by(Movie.release_year.desc(), Movie.id.desc())
         ).all()
         for movie in preferred_movies:
@@ -219,3 +223,7 @@ def clear_recommendation_cache(db: Session) -> int:
         db.delete(cache)
     db.commit()
     return count
+
+
+def invalidate_all_recommendation_caches(db: Session) -> None:
+    clear_recommendation_cache(db)

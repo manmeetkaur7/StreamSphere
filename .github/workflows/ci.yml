@@ -54,6 +54,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Validate Alembic revisions
+        working-directory: backend
+        run: alembic heads
+
+      - name: Apply migrations
+        working-directory: backend
+        run: alembic upgrade head
+
       - name: Run backend tests
         working-directory: backend
         run: pytest

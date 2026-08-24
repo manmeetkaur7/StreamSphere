@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import DateTime, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -8,6 +8,10 @@ from app.db.base import Base
 
 class Movie(Base):
     __tablename__ = "movies"
+    __table_args__ = (
+        Index("ix_movies_created_at_id", "created_at", "id"),
+        Index("ix_movies_language_release_year", "language", "release_year"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(255), index=True, nullable=False)

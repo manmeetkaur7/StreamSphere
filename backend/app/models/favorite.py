@@ -11,6 +11,7 @@ class Favorite(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "movie_id", name="uq_favorites_user_movie"),
         Index("ix_favorites_user_created_at", "user_id", "created_at"),
+        Index("ix_favorites_movie_created_at", "movie_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

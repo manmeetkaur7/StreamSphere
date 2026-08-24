@@ -1,6 +1,6 @@
 # StreamSphere
 
-StreamSphere is a full-stack streaming discovery platform with a Next.js frontend, a FastAPI backend, PostgreSQL persistence, Redis-backed caching with graceful fallback, AI-assisted discovery features, real-time notifications, admin analytics, and Docker-based local orchestration.
+StreamSphere is a full-stack streaming discovery platform with a Next.js frontend, a FastAPI backend, PostgreSQL persistence, Redis-backed caching with graceful fallback, real-time notifications, admin analytics, and AI-assisted discovery features.
 
 ## Stack
 
@@ -8,22 +8,27 @@ StreamSphere is a full-stack streaming discovery platform with a Next.js fronten
 - Backend: FastAPI, SQLAlchemy 2, Pydantic, JWT auth
 - Database: PostgreSQL
 - Cache and transient infrastructure: Redis with in-memory fallback
+- Migrations: Alembic
+- Load testing: Locust
 - DevOps: Docker Compose, GitHub Actions
 
-## Production Features
+## Production-Oriented Features
 
-- Redis-backed caching for recommendations, AI search, and movie summaries
-- Graceful fallback to in-memory cache when Redis is disabled or unavailable
-- API rate limiting middleware with configurable thresholds
-- Structured JSON request logging with request IDs
-- Expanded `/health` endpoint with database, Redis, uptime, version, and environment details
-- OpenAPI metadata with tagged sections and operational descriptions
-- Real-time notifications with WebSocket delivery and frontend REST fallback
-- Admin moderation, stats, and platform analytics APIs
-- Personal profile insights backed by SQL activity aggregates
-- Background job abstraction built on FastAPI `BackgroundTasks`
-- Dockerfiles for backend and frontend plus a complete `docker-compose.yml`
-- CI workflow for backend tests, frontend lint/build, and Compose validation
+- Movie catalog, genres, filters, pagination, profiles, ratings, reviews, favorites, watchlists, and progress tracking
+- AI search, AI summaries, recommendations, and personalized home feed
+- Notifications with WebSocket delivery and REST fallback
+- Admin moderation, admin stats, and platform analytics
+- Redis-backed caching with safe in-memory fallback
+- API rate limiting, structured request logging, request IDs, and lightweight `/metrics`
+- Expanded `/health` endpoint with dependency state, uptime, version, and environment
+- Security headers, structured safe error responses, and Argon2 password hashing for new passwords
+- Alembic migration workflow with a baseline strategy for existing databases
+
+## Architecture Docs
+
+- System design: [docs/system-design.md](docs/system-design.md)
+- Security notes: [docs/security.md](docs/security.md)
+- Load testing: [load-tests/README.md](load-tests/README.md)
 
 ## Repository Layout
 
@@ -31,17 +36,25 @@ StreamSphere is a full-stack streaming discovery platform with a Next.js fronten
 streamsphere/
 ├── .github/workflows/ci.yml
 ├── backend/
+│   ├── alembic/
 │   ├── app/
 │   ├── tests/
 │   ├── Dockerfile
+│   ├── alembic.ini
 │   ├── requirements.txt
 │   └── .env.example
+├── docs/
+│   ├── security.md
+│   └── system-design.md
 ├── frontend/
 │   ├── app/
 │   ├── components/
 │   ├── lib/
 │   ├── Dockerfile
 │   └── package.json
+├── load-tests/
+│   ├── locustfile.py
+│   └── README.md
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
@@ -49,39 +62,35 @@ streamsphere/
 
 ## Environment Configuration
 
-1. Copy the root example file:
-
-```bash
-cp .env.example .env
-```
-
-PowerShell:
+Copy the root example file:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-2. Review or change the important values:
+Important variables:
 
 - `DATABASE_URL`
 - `REDIS_URL`
+- `DB_POOL_SIZE`
+- `DB_MAX_OVERFLOW`
 - `JWT_SECRET_KEY`
 - `ALLOWED_ORIGINS`
-- `NEXT_PUBLIC_API_BASE_URL`
-- `INTERNAL_API_BASE_URL`
 - `RATE_LIMIT_REQUESTS`
 - `RATE_LIMIT_WINDOW_SECONDS`
 - `AI_PROVIDER`
+- `AI_REQUEST_TIMEOUT_SECONDS`
+- `AI_REQUEST_RETRIES`
+- `METRICS_ENABLED`
+- `SECURITY_HEADERS_ENABLED`
 
 The backend loads `.env` from the repository root and also supports `backend/.env` for backend-only local overrides.
 
-For local browser work, include both `http://localhost:3000` and `http://127.0.0.1:3000` in `ALLOWED_ORIGINS`.
+## Local Startup
 
-## Run Locally With Docker
+### Docker
 
-This is the primary local startup path.
-
-```bash
+```powershell
 docker compose up --build
 ```
 
@@ -90,187 +99,92 @@ Services:
 - Frontend: [http://localhost:3000](http://localhost:3000)
 - Backend API: [http://localhost:8000](http://localhost:8000)
 - Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
-- ReDoc: [http://localhost:8000/redoc](http://localhost:8000/redoc)
-- PostgreSQL: `localhost:5432`
-- Redis: `localhost:6379`
+- Metrics: [http://localhost:8000/metrics](http://localhost:8000/metrics)
 
-Stop the stack:
+### Without Docker
 
-```bash
-docker compose down
-```
+Backend:
 
-Remove the Postgres volume too:
-
-```bash
-docker compose down -v
-```
-
-## Run Without Docker
-
-### Backend
-
-```bash
+```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env
+Copy-Item .env.example .env
 uvicorn app.main:app --reload
 ```
 
-### Frontend
+Frontend:
 
-```bash
+```powershell
 cd frontend
 npm ci
 npm run dev
 ```
 
-## Health and Operations
+## Migrations
+
+### Existing local database with data
+
+Stamp the baseline first so Alembic does not try to recreate existing tables:
+
+```powershell
+cd backend
+.\.venv\Scripts\alembic.exe stamp 20260821_0001
+.\.venv\Scripts\alembic.exe upgrade head
+```
+
+### New empty database
+
+```powershell
+cd backend
+.\.venv\Scripts\alembic.exe upgrade head
+```
+
+Downgrade one step:
+
+```powershell
+.\.venv\Scripts\alembic.exe downgrade -1
+```
+
+Current revisions:
+
+- `20260821_0001` baseline schema
+- `20260821_0002` Sprint 9 performance indexes
+
+## Health, Metrics, and Security
 
 `GET /health` returns:
 
 - overall status
 - environment
-- running version
-- uptime in seconds
-- PostgreSQL status
-- Redis status and active backend
+- version
+- uptime
+- PostgreSQL health
+- Redis/cache backend health
 
-Status behavior:
+`GET /metrics` returns safe internal counters such as:
 
-- `ok`: required dependencies are healthy and Redis is active
-- `degraded`: the app is serving traffic with a fallback, such as in-memory cache
-- `unavailable`: a required dependency such as the database is unavailable
+- total requests
+- average request latency
+- request error counts
+- cache hits and misses
+- AI failure counts
+- WebSocket connection counters
 
-## Sprint 8 Architecture
+Security headers added in Sprint 9:
 
-### Notifications
-
-- `notifications` stores user-scoped notification events, read state, and timestamps.
-- REST endpoints provide list, unread count, mark-as-read, mark-all-read, and delete operations.
-- WebSocket clients connect to `/ws/notifications` with the existing JWT access token.
-- The backend maintains a per-user connection manager so multiple sessions for the same account receive the same events.
-- The frontend bell uses WebSockets when available and falls back to REST refresh if the socket disconnects.
-
-### Admin Authorization
-
-- `users.is_admin` gates admin-only routes through `require_admin`.
-- Authenticated non-admin users receive `403 Forbidden` on admin routes.
-- `users.is_active` blocks inactive users from logging in or authenticating protected endpoints.
-
-Promote a local admin safely:
-
-```sql
-UPDATE users
-SET is_admin = TRUE
-WHERE email = 'your-local-user@example.com';
-```
-
-Do not hardcode an admin password or admin email in application code.
-
-### Analytics
-
-- `activity_events` tracks `login`, `movie_view`, `ai_search`, `rating`, `review`, `favorite`, `watchlist_add`, `progress_update`, and `recommendation_generated`.
-- Event metadata is sanitized before persistence so keys like `password`, `token`, `jwt`, `authorization`, `api_key`, and `secret` are removed.
-- Profile insights and admin analytics use SQL aggregates instead of loading full tables into Python.
-
-### Background Jobs
-
-- `BackgroundJobDispatcher` queues notification generation, recommendation refreshes, and AI summary regeneration through FastAPI `BackgroundTasks`.
-- Routes depend on the abstraction so a real queue such as Celery or RQ can replace it later without route rewrites.
-
-## Caching
-
-Redis caching is enabled with `REDIS_ENABLED=true`.
-
-Cached flows:
-
-- recommendations
-- AI search responses
-- movie summaries
-
-Fallback behavior:
-
-- If Redis is reachable, StreamSphere uses Redis.
-- If Redis is disabled or unavailable, the backend falls back to in-memory storage.
-- Health reporting reflects that fallback with a `degraded` Redis status.
-
-Relevant env vars:
-
-- `REDIS_ENABLED`
-- `REDIS_URL`
-- `CACHE_DEFAULT_TTL_SECONDS`
-- `RECOMMENDATION_CACHE_TTL_SECONDS`
-- `AI_SEARCH_CACHE_TTL_SECONDS`
-- `MOVIE_SUMMARY_CACHE_TTL_SECONDS`
-
-## Rate Limiting
-
-Rate limiting is applied at the API middleware layer.
-
-Defaults:
-
-- `RATE_LIMIT_REQUESTS=120`
-- `RATE_LIMIT_WINDOW_SECONDS=60`
-
-Exempt paths default to:
-
-- `/health`
-- `/docs`
-- `/redoc`
-- `/openapi.json`
-
-Responses include:
-
-- `X-RateLimit-Limit`
-- `X-RateLimit-Remaining`
-- `Retry-After` when the limit is exceeded
-
-## Structured Logging
-
-Each request emits a structured JSON log record with:
-
-- `event`
-- `request_id`
-- `method`
-- `path`
-- `status_code`
-- `duration_ms`
-- `client_ip`
-
-Each response also includes `X-Request-ID`.
-
-## OpenAPI Documentation
-
-Swagger UI and ReDoc are enabled by default and grouped with tagged sections such as:
-
-- `health`
-- `authentication`
-- `movies`
-- `genres`
-- `notifications`
-- `watchlist`
-- `favorites`
-- `reviews`
-- `recommendations`
-- `search`
-- `home`
-- `profile`
-- `admin`
-
-You can disable docs in restricted environments with:
-
-```env
-DOCS_ENABLED=false
-```
+- `X-Content-Type-Options`
+- `X-Frame-Options`
+- `Referrer-Policy`
+- `Content-Security-Policy`
 
 ## API Overview
 
 Core public endpoints:
 
 - `GET /health`
+- `GET /metrics`
 - `GET /movies`
 - `GET /movies/trending`
 - `GET /movies/{id}`
@@ -301,11 +215,10 @@ Authenticated endpoints:
 - `GET /home`
 - `GET /profile`
 - `GET /profile/insights`
-- movie CRUD, rating, and review maintenance endpoints
 
-Real-time endpoint:
+WebSocket endpoint:
 
-- WebSocket `/ws/notifications?token=<jwt>`
+- `/ws/notifications?token=<jwt>`
 
 Admin endpoints:
 
@@ -320,72 +233,68 @@ Admin endpoints:
 - `POST /admin/recommendations/recompute`
 - `DELETE /admin/recommendations/cache`
 
-Frontend pages:
+## Performance and Scalability Notes
 
-- `/`
-- `/movies`
-- `/movies/[id]`
-- `/profile`
-- `/admin` for admins only
+- Compound indexes now support common read patterns for movies, notifications, analytics, ratings, favorites, watchlists, and progress.
+- AI search avoids unnecessary N+1 genre loads.
+- Admin review reads eagerly load related users to avoid repeated queries.
+- Recommendation inputs invalidate consistently across ratings, reviews, favorites, watchlists, progress, and movie mutations.
+- The modular monolith remains the right architecture now; future service boundaries are documented in [docs/system-design.md](docs/system-design.md).
+
+## Load Testing and Benchmarking
+
+Locust smoke configuration lives in [load-tests/locustfile.py](load-tests/locustfile.py).
+
+Example local smoke run:
+
+```powershell
+backend\.venv\Scripts\locust.exe -f load-tests\locustfile.py --headless --users 5 --spawn-rate 1 --run-time 30s
+```
+
+This setup is intended for light local verification, not destructive stress tests.
 
 ## Testing and Validation
 
 Backend:
 
-```bash
-cd backend
-.\.venv\Scripts\python.exe -m pytest
+```powershell
+backend\.venv\Scripts\python.exe -m pytest backend\tests -q --disable-warnings
 ```
 
-Frontend lint:
+Frontend:
 
-```bash
+```powershell
 cd frontend
 npm run lint
-```
-
-Frontend build:
-
-```bash
-cd frontend
 npm run build
 ```
 
-Current backend status:
+Current verified status on Friday, August 21, 2026:
 
-- `37` passing backend tests
-
-The backend suite covers:
-
-- health and startup behavior
-- movie and genre CRUD
-- search and pagination
-- watchlists and favorites
-- ratings and reviews
-- profiles and AI features
-- cache fallback behavior
-- rate limiting
-- structured logging
-- OpenAPI metadata
-- notifications and ownership checks
-- WebSocket authentication and delivery
-- admin permissions, moderation, stats, and analytics
-- personal insights and activity tracking
+- `44` backend tests passing
+- frontend lint passing
+- frontend production build passing
 
 ## Continuous Integration
 
 GitHub Actions workflow: `.github/workflows/ci.yml`
 
-It runs:
+CI runs:
 
-- backend pytest against PostgreSQL and Redis service containers
+- backend dependency installation
+- Alembic revision validation
+- `alembic upgrade head`
+- backend pytest
+- frontend dependency installation
 - frontend lint
 - frontend production build
-- `docker compose config` validation
+- `docker compose config`
 
-## Notes About Existing Warnings
+## Notes
 
-The frontend lint step currently reports existing `next/image` warnings for legacy `<img>` usage in a few components. They are warnings, not errors, and do not block the build or test suite.
+- Real `.env` files must never be committed.
+- Redis fallback is expected to report `degraded` health when Redis is unavailable.
+- Existing bcrypt password hashes remain verifiable for compatibility; new password hashes use Argon2.
 
 ## License
 

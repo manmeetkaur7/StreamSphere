@@ -1,7 +1,7 @@
 from fastapi import Request
-from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
+from app.core.errors import error_response
 from app.services.cache import get_rate_limit_service
 
 
@@ -15,9 +15,11 @@ async def rate_limit_middleware(request: Request, call_next):
     current_count = get_rate_limit_service().hit(key, settings.rate_limit_window_seconds)
 
     if current_count > settings.rate_limit_requests:
-        response = JSONResponse(
+        response = error_response(
+            request,
             status_code=429,
-            content={"detail": "Rate limit exceeded. Please retry shortly."},
+            code="rate_limited",
+            message="Rate limit exceeded. Please retry shortly.",
         )
         response.headers["X-RateLimit-Limit"] = str(settings.rate_limit_requests)
         response.headers["X-RateLimit-Remaining"] = "0"

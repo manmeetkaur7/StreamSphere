@@ -12,6 +12,7 @@ class ActivityEvent(Base):
         Index("ix_activity_events_user_created_at", "user_id", "created_at"),
         Index("ix_activity_events_type_created_at", "event_type", "created_at"),
         Index("ix_activity_events_movie_created_at", "movie_id", "created_at"),
+        Index("ix_activity_events_user_type_created_at", "user_id", "event_type", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

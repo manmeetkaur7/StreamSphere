@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import type { Movie } from "@/lib/catalog";
@@ -14,10 +15,12 @@ export default function MovieGridCard({ movie }: MovieGridCardProps) {
       className="group overflow-hidden rounded-2xl border border-white/10 bg-[#101010] shadow-[0_18px_40px_rgba(0,0,0,0.28)] transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_24px_48px_rgba(229,9,20,0.18)]"
     >
       <div className="relative aspect-[2/3] overflow-hidden bg-[#191919]">
-        <img
+        <Image
           src={movie.poster_url}
           alt={`${movie.title} poster`}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          fill
+          sizes="(min-width: 1280px) 18rem, (min-width: 768px) 22rem, 100vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
         <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">

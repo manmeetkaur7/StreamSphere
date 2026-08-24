@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from sqlalchemy import cast, desc, func, select, String
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.activity_event import ActivityEvent
 from app.models.favorite import Favorite
@@ -59,7 +59,12 @@ def list_admin_movies(db: Session) -> list[MovieResponse]:
 
 def list_admin_reviews(db: Session) -> list[AdminReviewResponse]:
     reviews = list(
-        db.scalars(select(Review).order_by(Review.created_at.desc(), Review.id.desc()).limit(25)).all()
+        db.scalars(
+            select(Review)
+            .options(selectinload(Review.user))
+            .order_by(Review.created_at.desc(), Review.id.desc())
+            .limit(25)
+        ).all()
     )
     if not reviews:
         return []

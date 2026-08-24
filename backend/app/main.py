@@ -3,13 +3,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.errors import error_response, http_exception_handler, validation_exception_handler
 from app.core.logging import configure_logging, structured_logging_middleware
 from app.core.rate_limit import rate_limit_middleware
+from app.core.security_headers import security_headers_middleware
 from app.db.base import init_db
 from app.services.cache import reset_runtime_services
 
@@ -66,14 +71,20 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     application.middleware("http")(structured_logging_middleware)
+    application.middleware("http")(security_headers_middleware)
     application.middleware("http")(rate_limit_middleware)
+    application.add_exception_handler(HTTPException, http_exception_handler)
+    application.add_exception_handler(StarletteHTTPException, http_exception_handler)
+    application.add_exception_handler(RequestValidationError, validation_exception_handler)
 
     @application.exception_handler(Exception)
-    async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         logger.exception("Unhandled exception while processing request", exc_info=exc)
-        return JSONResponse(
+        return error_response(
+            request,
             status_code=500,
-            content={"detail": "Internal Server Error"},
+            code="internal_server_error",
+            message="Internal Server Error",
         )
 
     application.include_router(api_router)

@@ -28,6 +28,9 @@ class Settings:
         )
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
+        self.db_pool_size = int(os.getenv("DB_POOL_SIZE", "10"))
+        self.db_max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+        self.db_pool_timeout_seconds = int(os.getenv("DB_POOL_TIMEOUT_SECONDS", "30"))
         self.cache_default_ttl_seconds = int(os.getenv("CACHE_DEFAULT_TTL_SECONDS", "300"))
         self.recommendation_cache_ttl_seconds = int(
             os.getenv("RECOMMENDATION_CACHE_TTL_SECONDS", "300")
@@ -41,11 +44,23 @@ class Settings:
         self.access_token_expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
         self.ai_provider_name = os.getenv("AI_PROVIDER", "mock").strip().lower()
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        self.ai_request_timeout_seconds = float(os.getenv("AI_REQUEST_TIMEOUT_SECONDS", "3"))
+        self.ai_request_retries = int(os.getenv("AI_REQUEST_RETRIES", "1"))
         self.debug = os.getenv("DEBUG", "false").lower() == "true"
         self.docs_enabled = os.getenv("DOCS_ENABLED", "true").lower() == "true"
         self.log_level = os.getenv("LOG_LEVEL", "INFO").upper()
         self.structured_logging_enabled = (
             os.getenv("STRUCTURED_LOGGING_ENABLED", "true").lower() == "true"
+        )
+        self.metrics_enabled = os.getenv("METRICS_ENABLED", "true").lower() == "true"
+        self.security_headers_enabled = (
+            os.getenv("SECURITY_HEADERS_ENABLED", "true").lower() == "true"
+        )
+        self.content_security_policy = os.getenv(
+            "CONTENT_SECURITY_POLICY",
+            "default-src 'self'; img-src 'self' https: data:; media-src 'self' https:; "
+            "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "connect-src 'self' http: https: ws: wss:;",
         )
         self.rate_limit_enabled = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
         self.rate_limit_requests = int(os.getenv("RATE_LIMIT_REQUESTS", "120"))
@@ -54,7 +69,7 @@ class Settings:
             path.strip()
             for path in os.getenv(
                 "RATE_LIMIT_EXEMPT_PATHS",
-                "/health,/docs,/redoc,/openapi.json",
+                "/health,/metrics,/docs,/redoc,/openapi.json",
             ).split(",")
             if path.strip()
         )

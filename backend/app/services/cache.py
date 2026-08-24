@@ -11,6 +11,7 @@ from redis import Redis
 from redis.exceptions import RedisError
 
 from app.core.config import get_settings
+from app.services.metrics import get_metrics_registry
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,14 @@ class CacheService:
             self._primary_backend = RedisCacheBackend(settings.redis_url)
         else:
             self._primary_backend = None
+        self._primary_backend_disabled = False
+
+    def _disable_primary_backend(self, message: str) -> None:
+        if self._primary_backend is None or self._primary_backend_disabled:
+            return
+        logger.warning(message, exc_info=True)
+        self._primary_backend = None
+        self._primary_backend_disabled = True
 
     @property
     def backend_name(self) -> str:
@@ -109,13 +118,15 @@ class CacheService:
         try:
             return self._primary_backend.ping(), self._primary_backend.backend_name
         except RedisError:
-            logger.warning("Redis cache unavailable; falling back to in-memory cache.", exc_info=True)
+            self._disable_primary_backend("Redis cache unavailable; falling back to in-memory cache.")
             return False, self._fallback_backend.backend_name
 
     def get_json(self, key: str) -> Any | None:
         payload = self._read(key)
         if payload is None:
+            get_metrics_registry().increment("cache.misses")
             return None
+        get_metrics_registry().increment("cache.hits")
         return json.loads(payload)
 
     def set_json(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
@@ -130,7 +141,7 @@ class CacheService:
             try:
                 backend.delete(key)
             except RedisError:
-                logger.warning("Cache delete failed for key '%s'.", key, exc_info=True)
+                self._disable_primary_backend(f"Cache delete failed for key '{key}'. Falling back to in-memory cache.")
 
     def _read(self, key: str) -> str | None:
         if self._primary_backend is not None:
@@ -139,17 +150,19 @@ class CacheService:
                 if value is not None:
                     return value
             except RedisError:
-                logger.warning("Redis cache read failed for key '%s'.", key, exc_info=True)
+                self._disable_primary_backend(f"Redis cache read failed for key '{key}'. Falling back to in-memory cache.")
         return self._fallback_backend.get(key)
 
     def _write(self, key: str, value: str, ttl_seconds: int) -> None:
         if self._primary_backend is not None:
             try:
                 self._primary_backend.set(key, value, ttl_seconds)
+                get_metrics_registry().increment("cache.writes")
                 return
             except RedisError:
-                logger.warning("Redis cache write failed for key '%s'.", key, exc_info=True)
+                self._disable_primary_backend(f"Redis cache write failed for key '{key}'. Falling back to in-memory cache.")
         self._fallback_backend.set(key, value, ttl_seconds)
+        get_metrics_registry().increment("cache.writes")
 
 
 class InMemoryRateLimitStore:
@@ -195,13 +208,21 @@ class RateLimitService:
             self._primary_store = RedisRateLimitStore(settings.redis_url)
         else:
             self._primary_store = None
+        self._primary_store_disabled = False
+
+    def _disable_primary_store(self) -> None:
+        if self._primary_store is None or self._primary_store_disabled:
+            return
+        logger.warning("Redis rate-limit store unavailable; using in-memory fallback.", exc_info=True)
+        self._primary_store = None
+        self._primary_store_disabled = True
 
     def hit(self, key: str, window_seconds: int) -> int:
         if self._primary_store is not None:
             try:
                 return self._primary_store.increment(key, window_seconds)
             except RedisError:
-                logger.warning("Redis rate-limit store unavailable; using in-memory fallback.", exc_info=True)
+                self._disable_primary_store()
         return self._fallback_store.increment(key, window_seconds)
 
 

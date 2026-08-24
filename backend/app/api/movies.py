@@ -23,7 +23,8 @@ from app.schemas.engagement import RatingRequest, RatingResponse, ReviewCreateRe
 from app.services.activity_service import record_activity
 from app.services.background_jobs import background_job_dispatcher
 from app.services.movie_views import build_movie_select, movie_response_from_row, movie_response_list_from_rows
-from app.services.recommendation_service import invalidate_user_recommendation_cache
+from app.services.recommendation_service import invalidate_all_recommendation_caches, invalidate_user_recommendation_cache
+from app.services.summary_service import invalidate_movie_summary_cache
 from app.services.trending_service import get_trending_movie_rows
 
 router = APIRouter(prefix="/movies", tags=["movies"])
@@ -177,6 +178,7 @@ def create_movie(
     movie.genres = _resolve_genres(db, payload.genre_ids)
     db.add(movie)
     db.commit()
+    invalidate_all_recommendation_caches(db)
     return movie_response_from_row(_movie_detail_row(db, movie.id))
 
 
@@ -212,6 +214,8 @@ def update_movie(
         movie.genres = _resolve_genres(db, updates["genre_ids"])
 
     db.commit()
+    invalidate_movie_summary_cache(movie.id)
+    invalidate_all_recommendation_caches(db)
     return movie_response_from_row(_movie_detail_row(db, movie.id))
 
 
@@ -225,8 +229,10 @@ def delete_movie(
     if movie is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Movie not found.")
 
+    invalidate_movie_summary_cache(movie.id)
     db.delete(movie)
     db.commit()
+    invalidate_all_recommendation_caches(db)
 
 
 @router.post("/{movie_id}/rating", response_model=RatingResponse, status_code=status.HTTP_201_CREATED)
@@ -292,6 +298,7 @@ def update_rating(
 @router.delete("/{movie_id}/rating", status_code=status.HTTP_204_NO_CONTENT)
 def delete_rating(
     movie_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
@@ -304,6 +311,7 @@ def delete_rating(
     db.delete(rating)
     db.commit()
     invalidate_user_recommendation_cache(current_user.id)
+    background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
 
 
 @router.get("/{movie_id}/reviews", response_model=list[ReviewResponse])

@@ -11,6 +11,7 @@ from app.services.activity_service import record_activity
 from app.services.ai_provider import AIProvider, get_ai_provider
 from app.services.background_jobs import background_job_dispatcher
 from app.services.progress_service import upsert_progress
+from app.services.recommendation_service import invalidate_user_recommendation_cache
 from app.services.summary_service import get_or_generate_summary
 
 router = APIRouter(prefix="/movies", tags=["movies"])
@@ -53,6 +54,8 @@ def create_movie_progress(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     if progress is None:
+        invalidate_user_recommendation_cache(current_user.id)
+        background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
         record_activity(
             db,
             user_id=current_user.id,
@@ -78,6 +81,8 @@ def create_movie_progress(
         metadata={"progress_percentage": progress.progress_percentage, "completed": progress.completed},
         commit=True,
     )
+    invalidate_user_recommendation_cache(current_user.id)
+    background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
     return progress
 
 
@@ -96,6 +101,8 @@ def update_movie_progress(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     if progress is None:
+        invalidate_user_recommendation_cache(current_user.id)
+        background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
         record_activity(
             db,
             user_id=current_user.id,
@@ -121,6 +128,8 @@ def update_movie_progress(
         metadata={"progress_percentage": progress.progress_percentage, "completed": progress.completed},
         commit=True,
     )
+    invalidate_user_recommendation_cache(current_user.id)
+    background_job_dispatcher.queue_recommendation_refresh(background_tasks, user_id=current_user.id)
     return progress
 
 
