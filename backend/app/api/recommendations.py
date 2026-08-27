@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_admin, get_current_user
+from app.core.demo import require_demo_write_access
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.ai import AdminActionResponse, RecommendationResponse
@@ -16,6 +17,7 @@ def list_recommendations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RecommendationResponse:
+    require_demo_write_access()
     return get_recommendations(db, current_user)
 
 
@@ -37,5 +39,6 @@ def recompute_recommendations(
     dependencies=[Depends(get_current_admin)],
 )
 def clear_recommendations_cache(db: Session = Depends(get_db)) -> AdminActionResponse:
+    require_demo_write_access()
     cleared = clear_recommendation_cache(db)
     return AdminActionResponse(detail=f"Cleared {cleared} cached recommendation entries.")

@@ -87,12 +87,16 @@ function createUrl(path: string, params?: Record<string, string | number | undef
 }
 
 async function fetchJson<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
-  const response = await fetch(createUrl(path, params), {
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(createUrl(path, params), { cache: "no-store" });
+  } catch {
+    throw new Error("StreamSphere API is unavailable. Check the backend and try again.");
+  }
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.detail ?? `Request failed with status ${response.status}`);
   }
 
   return response.json() as Promise<T>;
@@ -115,16 +119,20 @@ export async function fetchTrendingMovies() {
 }
 
 export async function searchMoviesWithAI(query: string) {
-  const response = await fetch(createUrl("/search/ai"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(createUrl("/search/ai"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+  } catch {
+    throw new Error("AI search is unavailable because the API cannot be reached.");
+  }
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.detail ?? "AI search is temporarily unavailable. Please try again.");
   }
 
   return (await response.json()) as AISearchResponse;

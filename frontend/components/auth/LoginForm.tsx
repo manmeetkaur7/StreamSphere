@@ -53,7 +53,7 @@ export default function LoginForm() {
     const password = String(formData.get("password") ?? "");
     const nextErrors: LoginErrors = {};
 
-    if (!identifier) nextErrors.identifier = "Enter your email or username.";
+    if (!identifier) nextErrors.identifier = "Enter your email address or username.";
     if (!password) nextErrors.password = "Enter your password.";
     else if (password.length < 8) nextErrors.password = "Password must be at least 8 characters.";
     setErrors(nextErrors);

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user, require_admin
+from app.core.demo import require_demo_write_access
 from app.db.session import get_db
 from app.models.review import Review
 from app.models.user import User
@@ -50,6 +51,7 @@ def get_admin_reviews(db: Session = Depends(get_db)) -> list[AdminReviewResponse
 
 @router.delete("/reviews/{review_id}", response_model=AdminActionResponse)
 def admin_delete_review(review_id: int, db: Session = Depends(get_db)) -> AdminActionResponse:
+    require_demo_write_access()
     review = db.scalar(select(Review).where(Review.id == review_id))
     if review is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found.")
@@ -65,6 +67,7 @@ def admin_update_user_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AdminUserResponse:
+    require_demo_write_access()
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")

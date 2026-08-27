@@ -1,6 +1,8 @@
 # StreamSphere
 
-StreamSphere is a full-stack streaming discovery platform with a Next.js frontend, a FastAPI backend, PostgreSQL persistence, Redis-backed caching with graceful fallback, real-time notifications, admin analytics, and AI-assisted discovery features.
+**Stories, made personal.** StreamSphere is a full-stack movie discovery platform with a polished Next.js experience, FastAPI backend, PostgreSQL persistence, real-time notifications, and AI-assisted discovery. It is designed as a portfolio-ready product, not a clone of an existing streaming service.
+
+> Personal libraries, viewer reviews, recommendations, natural-language search, operational visibility, and deployment-ready tooling in one focused application.
 
 ## Stack
 
@@ -26,8 +28,15 @@ StreamSphere is a full-stack streaming discovery platform with a Next.js fronten
 
 ## Architecture Docs
 
+- Interview-friendly overview: [docs/architecture-summary.md](docs/architecture-summary.md)
 - System design: [docs/system-design.md](docs/system-design.md)
 - Security notes: [docs/security.md](docs/security.md)
+- Deployment guide: [docs/deployment.md](docs/deployment.md)
+- Demo checklist: [docs/demo-checklist.md](docs/demo-checklist.md)
+
+## Screenshots and Demo
+
+Capture the landing page, catalog filters, movie engagement, profile insights, and admin analytics using the [demo checklist](docs/demo-checklist.md). Use seeded demo content only and do not include personal account details or tokens in screenshots.
 - Load testing: [load-tests/README.md](load-tests/README.md)
 
 ## Repository Layout
@@ -83,8 +92,11 @@ Important variables:
 - `AI_REQUEST_RETRIES`
 - `METRICS_ENABLED`
 - `SECURITY_HEADERS_ENABLED`
+- `DEMO_MODE`
 
 The backend loads `.env` from the repository root and also supports `backend/.env` for backend-only local overrides.
+
+Production validates `DATABASE_URL`, `JWT_SECRET_KEY`, explicit `ALLOWED_ORIGINS`, and `OPENAI_API_KEY` when `AI_PROVIDER=openai`. `DEMO_MODE=true` keeps the seeded catalog available while disabling destructive admin actions; it does not bypass authentication.
 
 ## Local Startup
 
@@ -269,9 +281,9 @@ npm run lint
 npm run build
 ```
 
-Current verified status on Friday, August 21, 2026:
+Current verified status on Wednesday, August 26, 2026:
 
-- `44` backend tests passing
+- `49` backend tests passing
 - frontend lint passing
 - frontend production build passing
 
@@ -290,11 +302,20 @@ CI runs:
 - frontend production build
 - `docker compose config`
 
+## Portfolio Materials
+
+- [Architecture summary](docs/architecture-summary.md)
+- [Interview guide](docs/interview-guide.md)
+- [Resume summary](docs/resume-summary.md)
+- [Demo checklist](docs/demo-checklist.md)
+- [Final project report](docs/final-project-report.md)
+
 ## Notes
 
 - Real `.env` files must never be committed.
 - Redis fallback is expected to report `degraded` health when Redis is unavailable.
 - Existing bcrypt password hashes remain verifiable for compatibility; new password hashes use Argon2.
+- `npm audit --omit=dev` currently reports four high-severity transitive advisories in the Next.js dependency tree. The available fix requires upgrading beyond the pinned Next.js version, so it is documented for a deliberate dependency-update pass rather than applied automatically.
 
 ## License
 

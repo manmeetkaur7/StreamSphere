@@ -4,6 +4,11 @@ const INTERNAL_API_BASE_URL =
 
 export const API_BASE_URL = PUBLIC_API_BASE_URL;
 
+async function responseError(response: Response, fallback: string) {
+  const payload = await response.json().catch(() => null);
+  return payload?.detail ?? payload?.error?.message ?? fallback;
+}
+
 export function resolveApiBaseUrl() {
   return typeof window === "undefined" ? INTERNAL_API_BASE_URL : PUBLIC_API_BASE_URL;
 }
@@ -31,38 +36,40 @@ export async function loginWithCredentials(identifier: string, password: string)
   body.set("username", identifier);
   body.set("password", password);
 
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: body.toString(),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+  } catch {
+    throw new Error("Unable to reach StreamSphere. Verify that the API is running and try again.");
+  }
+
+  if (!response.ok) {
+    throw new Error(await responseError(response, "Unable to sign in."));
+  }
 
   const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    throw new Error(payload?.detail ?? "Unable to sign in.");
-  }
 
   saveAccessToken(String(payload.access_token ?? ""));
 }
 
 export async function registerAndLogin(username: string, email: string, password: string) {
-  const registerResponse = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      username,
-      email,
-      password,
-    }),
-  });
+  let registerResponse: Response;
+  try {
+    registerResponse = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
+    });
+  } catch {
+    throw new Error("Unable to reach StreamSphere. Verify that the API is running and try again.");
+  }
 
-  const payload = await registerResponse.json().catch(() => null);
   if (!registerResponse.ok) {
-    throw new Error(payload?.detail ?? "Unable to create account.");
+    throw new Error(await responseError(registerResponse, "Unable to create account."));
   }
 
   await loginWithCredentials(email, password);
@@ -74,23 +81,27 @@ export async function fetchWithAuth<T>(path: string, init?: RequestInit): Promis
     throw new Error("Please sign in to continue.");
   }
 
-  const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${resolveApiBaseUrl()}${path}`, {
+      ...init,
+      headers: {
+        ...(init?.headers ?? {}),
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+  } catch {
+    throw new Error("Unable to reach StreamSphere. Verify that the API is running and try again.");
+  }
 
   if (response.status === 204) {
     return undefined as T;
   }
 
-  const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(payload?.detail ?? "Request failed.");
+    throw new Error(await responseError(response, "Request failed."));
   }
 
-  return payload as T;
+  return (await response.json()) as T;
 }

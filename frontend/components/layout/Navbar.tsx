@@ -94,13 +94,13 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-3 text-white sm:gap-5">
-          <button
-            type="button"
-            aria-label="Search"
+          <Link
+            href="/movies"
+            aria-label="Search the movie catalog"
             className="rounded-full p-2 transition-colors hover:bg-white/10 hover:text-[#E50914] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914]"
           >
             <SearchIcon />
-          </button>
+          </Link>
           {authenticated ? <NotificationCenter authenticated={authenticated} /> : null}
           <Link
             href="/profile"

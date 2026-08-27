@@ -18,14 +18,12 @@ class Settings:
         self.app_name = "StreamSphere API"
         self.api_version = os.getenv("API_VERSION", "1.0.0")
         self.app_environment = os.getenv("APP_ENV", "development").strip().lower()
+        self.demo_mode = os.getenv("DEMO_MODE", "false").lower() == "true"
         self.app_description = (
             "StreamSphere is a FastAPI backend for catalog browsing, engagement features, "
             "and AI-assisted discovery across movies, watchlists, reviews, recommendations, and search."
         )
-        self.database_url = os.getenv(
-            "DATABASE_URL",
-            "postgresql://postgres:password@localhost:5432/streamsphere",
-        )
+        self.database_url = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/streamsphere")
         self.redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         self.redis_enabled = os.getenv("REDIS_ENABLED", "false").lower() == "true"
         self.db_pool_size = int(os.getenv("DB_POOL_SIZE", "10"))
@@ -73,6 +71,7 @@ class Settings:
             ).split(",")
             if path.strip()
         )
+        self.origins_explicitly_configured = bool(os.getenv("ALLOWED_ORIGINS", "").strip())
         configured_origins = [
             origin.strip()
             for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
@@ -85,7 +84,31 @@ class Settings:
             f"http://127.0.0.1:{port}"
             for port in (3000, 3001, 3002)
         ]
-        self.allowed_origins = tuple(dict.fromkeys([*configured_origins, *local_dev_origins]))
+        self.allowed_origins = tuple(
+            dict.fromkeys(
+                configured_origins
+                if self.app_environment == "production"
+                else [*configured_origins, *local_dev_origins]
+            )
+        )
+        self._validate_production_settings()
+
+    def _validate_production_settings(self) -> None:
+        if self.app_environment != "production":
+            return
+
+        errors: list[str] = []
+        if not self.database_url or "postgres:password@" in self.database_url:
+            errors.append("DATABASE_URL must be configured with production credentials.")
+        if not self.jwt_secret_key or self.jwt_secret_key == "change-this-secret-in-production":
+            errors.append("JWT_SECRET_KEY must be set to a strong, non-default value.")
+        if not self.origins_explicitly_configured or not self.allowed_origins or "*" in self.allowed_origins:
+            errors.append("ALLOWED_ORIGINS must list explicit frontend origins.")
+        if self.ai_provider_name == "openai" and not self.openai_api_key:
+            errors.append("OPENAI_API_KEY is required when AI_PROVIDER=openai.")
+
+        if errors:
+            raise RuntimeError("Invalid production configuration: " + " ".join(errors))
 
 
 @lru_cache

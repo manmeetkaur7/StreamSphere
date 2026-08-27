@@ -13,8 +13,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StreamSphere | Premium Streaming",
-  description: "Discover your next story with StreamSphere, a premium streaming platform built from scratch.",
+  title: {
+    default: "StreamSphere | Stories, made personal",
+    template: "%s | StreamSphere",
+  },
+  description: "A full-stack movie discovery platform with personal libraries, real-time updates, and AI-assisted recommendations.",
+  applicationName: "StreamSphere",
+  keywords: ["movie discovery", "recommendations", "streaming catalog", "FastAPI", "Next.js"],
+  icons: { icon: "/icon.svg" },
+  openGraph: {
+    title: "StreamSphere | Stories, made personal",
+    description: "Discover, organize, and discuss movies with AI-assisted discovery.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

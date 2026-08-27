@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_admin, get_current_user
+from app.core.demo import require_demo_write_access
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.ai import MovieSummaryResponse, ProgressResponse, ProgressUpsertRequest
@@ -33,6 +34,7 @@ def get_movie_summary(
     db: Session = Depends(get_db),
     provider: AIProvider = Depends(get_ai_provider),
 ) -> MovieSummaryResponse:
+    require_demo_write_access()
     try:
         return get_or_generate_summary(db, provider, movie_id)
     except ValueError as exc:
