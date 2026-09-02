@@ -31,11 +31,13 @@ export default function MoviePreviewPlayer({ title, trailerUrl }: { title: strin
   const videoRef = useRef<HTMLVideoElement>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [ended, setEnded] = useState(false);
   const source = SAMPLE_SOURCES[trailerUrl];
   const isDemoPreview = source !== undefined;
   const canPlay = isDirectVideoUrl(trailerUrl);
 
   async function playPreview() {
+    setEnded(false);
     try {
       await videoRef.current?.play();
     } catch {
@@ -75,6 +77,8 @@ export default function MoviePreviewPlayer({ title, trailerUrl }: { title: strin
           controls
           playsInline
           preload="metadata"
+          onPlay={() => setEnded(false)}
+          onEnded={() => setEnded(true)}
           onCanPlay={() => setLoading(false)}
           onError={() => {
             setLoading(false);
@@ -87,6 +91,21 @@ export default function MoviePreviewPlayer({ title, trailerUrl }: { title: strin
         </video>
         {loading ? <p className="absolute inset-0 flex items-center justify-center bg-black/70 text-sm text-white/70">Loading preview...</p> : null}
         {failed ? <p className="absolute inset-0 flex items-center justify-center bg-black/80 px-6 text-center text-sm text-white/70">Preview unavailable for this title.</p> : null}
+        {ended ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 px-6 text-center">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#ff8b92]">StreamSphere</p>
+              <p className="mt-3 text-xl font-semibold text-white">Created by Manmeet Ghuman</p>
+              <button
+                type="button"
+                onClick={() => void playPreview()}
+                className="mt-5 rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+              >
+                Replay demo
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <p className="mt-4 text-xs leading-5 text-white/45">
