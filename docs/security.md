@@ -51,7 +51,7 @@
 
 ## Security Headers
 
-Sprint 9 adds:
+The application configures:
 
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`

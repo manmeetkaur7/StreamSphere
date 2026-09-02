@@ -45,7 +45,6 @@ next-env.d.ts
 # =========================
 # Backend and test tooling
 # =========================
-.pytest_cache/
 .coverage
 .coverage.*
 htmlcov/
@@ -80,6 +79,8 @@ pgdata/
 *.dump
 *.dump.gz
 *.bak
+*.db
+*.sqlite3
 
 # =========================
 # Docker
@@ -147,6 +148,3 @@ $RECYCLE.BIN/
 # =========================
 *.orig
 *.rej
-*.swp
-*.swo
-*.bak

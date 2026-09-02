@@ -1,122 +1,60 @@
 # StreamSphere
 
-**Stories, made personal.** StreamSphere is a full-stack movie discovery platform with a polished Next.js experience, FastAPI backend, PostgreSQL persistence, real-time notifications, and AI-assisted discovery. It is designed as a portfolio-ready product, not a clone of an existing streaming service.
+StreamSphere is a full-stack movie discovery platform built with Next.js, FastAPI, and PostgreSQL. It combines movie discovery, personalized recommendations, watchlists, ratings, reviews, and legal demo playback in one application.
 
-> Personal libraries, viewer reviews, recommendations, natural-language search, operational visibility, and deployment-ready tooling in one focused application.
+AI-assisted search and recommendations help users find movies based on their interests and activity.
 
-## Stack
+## Live Demo
 
-- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS 4
-- Backend: FastAPI, SQLAlchemy 2, Pydantic, JWT auth
-- Database: PostgreSQL
-- Cache and transient infrastructure: Redis with in-memory fallback
-- Migrations: Alembic
-- Load testing: Locust
-- DevOps: Docker Compose, GitHub Actions
+Frontend: [https://stream-sphere-beta.vercel.app](https://stream-sphere-beta.vercel.app)
 
-## Production-Oriented Features
+## Features
 
-- Movie catalog, genres, filters, pagination, profiles, ratings, reviews, favorites, watchlists, and progress tracking
-- AI search, AI summaries, recommendations, and personalized home feed
-- Notifications with WebSocket delivery and REST fallback
-- Admin moderation, admin stats, and platform analytics
-- Redis-backed caching with safe in-memory fallback
-- API rate limiting, structured request logging, request IDs, and lightweight `/metrics`
-- Expanded `/health` endpoint with dependency state, uptime, version, and environment
-- Security headers, structured safe error responses, and Argon2 password hashing for new passwords
-- Alembic migration workflow with a baseline strategy for existing databases
+- Movie catalog with search, genre and language filters, sorting, and pagination
+- JWT authentication and user profiles
+- Personal watchlists and favorites
+- Movie ratings and reviews
+- AI-assisted search, summaries, and recommendations
+- Real-time notifications with a REST fallback
+- Admin moderation and analytics tools
+- Legal demo playback using direct HTML5 video sources
 
-## Architecture Docs
+## Tech Stack
 
-- Interview-friendly overview: [docs/architecture-summary.md](docs/architecture-summary.md)
-- System design: [docs/system-design.md](docs/system-design.md)
-- Security notes: [docs/security.md](docs/security.md)
-- Deployment guide: [docs/deployment.md](docs/deployment.md)
-- Demo checklist: [docs/demo-checklist.md](docs/demo-checklist.md)
+**Frontend:** Next.js, TypeScript, React, Tailwind CSS
 
-## Screenshots and Demo
+**Backend:** FastAPI, Python, SQLAlchemy, Pydantic, JWT authentication
 
-Capture the landing page, catalog filters, movie engagement, profile insights, and admin analytics using the [demo checklist](docs/demo-checklist.md). Use seeded demo content only and do not include personal account details or tokens in screenshots.
-- Load testing: [load-tests/README.md](load-tests/README.md)
-- Legal demo playback: [docs/demo-playback.md](docs/demo-playback.md)
+**Data and infrastructure:** PostgreSQL, Redis, Alembic, Docker Compose, GitHub Actions, Locust, Render, and Vercel
 
-## Repository Layout
+## Architecture
 
-```text
-streamsphere/
-├── .github/workflows/ci.yml
-├── backend/
-│   ├── alembic/
-│   ├── app/
-│   ├── tests/
-│   ├── Dockerfile
-│   ├── alembic.ini
-│   ├── requirements.txt
-│   └── .env.example
-├── docs/
-│   ├── security.md
-│   └── system-design.md
-├── frontend/
-│   ├── app/
-│   ├── components/
-│   ├── lib/
-│   ├── Dockerfile
-│   └── package.json
-├── load-tests/
-│   ├── locustfile.py
-│   └── README.md
-├── docker-compose.yml
-├── .env.example
-└── README.md
-```
+The Next.js frontend provides the catalog and authenticated user experience. FastAPI exposes REST and WebSocket APIs, and SQLAlchemy stores application data in PostgreSQL. Redis supports caching and rate limiting when available, with an in-memory fallback for local development.
 
-## Environment Configuration
+See [the architecture summary](docs/architecture-summary.md) and [the system design](docs/system-design.md) for component boundaries and technical tradeoffs.
 
-Copy the root example file:
+## Configuration
 
-```powershell
-Copy-Item .env.example .env
-```
+Copy `.env.example` to `.env` for Docker Compose, or `backend/.env.example` to `backend/.env` for a backend-only setup. Keep populated environment files out of version control.
 
-Important variables:
+For production, configure `DATABASE_URL`, a non-default `JWT_SECRET_KEY`, and explicit `ALLOWED_ORIGINS`.
 
-- `DATABASE_URL`
-- `REDIS_URL`
-- `DB_POOL_SIZE`
-- `DB_MAX_OVERFLOW`
-- `JWT_SECRET_KEY`
-- `ALLOWED_ORIGINS`
-- `RATE_LIMIT_REQUESTS`
-- `RATE_LIMIT_WINDOW_SECONDS`
-- `AI_PROVIDER`
-- `AI_REQUEST_TIMEOUT_SECONDS`
-- `AI_REQUEST_RETRIES`
-- `METRICS_ENABLED`
-- `SECURITY_HEADERS_ENABLED`
-- `DEMO_MODE`
-
-The backend loads `.env` from the repository root and also supports `backend/.env` for backend-only local overrides.
-
-Production validates `DATABASE_URL`, `JWT_SECRET_KEY`, explicit `ALLOWED_ORIGINS`, and `OPENAI_API_KEY` when `AI_PROVIDER=openai`. `DEMO_MODE=true` keeps the seeded catalog available while disabling destructive admin actions; it does not bypass authentication.
-
-## Local Startup
+## Local Setup
 
 ### Docker
 
 ```powershell
+Copy-Item .env.example .env
 docker compose up --build
 ```
 
-Services:
-
-- Frontend: [http://localhost:3000](http://localhost:3000)
-- Backend API: [http://localhost:8000](http://localhost:8000)
-- Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
-- Metrics: [http://localhost:8000/metrics](http://localhost:8000/metrics)
+- Frontend: http://localhost:3000
+- API: http://localhost:8000
+- API docs: http://localhost:8000/docs
 
 ### Without Docker
 
-Backend:
+Start PostgreSQL and configure `DATABASE_URL` in a local `.env` file. Then run the backend:
 
 ```powershell
 cd backend
@@ -124,10 +62,11 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-Frontend:
+In another terminal, start the frontend:
 
 ```powershell
 cd frontend
@@ -135,188 +74,57 @@ npm ci
 npm run dev
 ```
 
-## Migrations
+For an existing database created before Alembic, review [the deployment guide](docs/deployment.md) before running migrations.
 
-### Existing local database with data
+## Testing
 
-Stamp the baseline first so Alembic does not try to recreate existing tables:
+Run backend tests from the repository root:
 
 ```powershell
-cd backend
-.\.venv\Scripts\alembic.exe stamp 20260821_0001
-.\.venv\Scripts\alembic.exe upgrade head
+backend\.venv\Scripts\python.exe -m pytest backend\tests
 ```
 
-### New empty database
+Run frontend checks from the `frontend` directory:
 
 ```powershell
-cd backend
-.\.venv\Scripts\alembic.exe upgrade head
-```
-
-Downgrade one step:
-
-```powershell
-.\.venv\Scripts\alembic.exe downgrade -1
-```
-
-Current revisions:
-
-- `20260821_0001` baseline schema
-- `20260821_0002` Sprint 9 performance indexes
-
-## Health, Metrics, and Security
-
-`GET /health` returns:
-
-- overall status
-- environment
-- version
-- uptime
-- PostgreSQL health
-- Redis/cache backend health
-
-`GET /metrics` returns safe internal counters such as:
-
-- total requests
-- average request latency
-- request error counts
-- cache hits and misses
-- AI failure counts
-- WebSocket connection counters
-
-Security headers added in Sprint 9:
-
-- `X-Content-Type-Options`
-- `X-Frame-Options`
-- `Referrer-Policy`
-- `Content-Security-Policy`
-
-## API Overview
-
-Core public endpoints:
-
-- `GET /health`
-- `GET /metrics`
-- `GET /movies`
-- `GET /movies/trending`
-- `GET /movies/{id}`
-- `GET /movies/{id}/summary`
-- `GET /movies/{id}/reviews`
-- `GET /genres`
-- `POST /search/ai`
-
-Authenticated endpoints:
-
-- `POST /auth/register`
-- `POST /auth/login`
-- `GET /notifications`
-- `GET /notifications/unread-count`
-- `PUT /notifications/{id}/read`
-- `PUT /notifications/read-all`
-- `DELETE /notifications/{id}`
-- `GET /watchlist`
-- `POST /watchlist/{movie_id}`
-- `DELETE /watchlist/{movie_id}`
-- `GET /favorites`
-- `POST /favorites/{movie_id}`
-- `DELETE /favorites/{movie_id}`
-- `GET /continue-watching`
-- `POST /movies/{id}/progress`
-- `PUT /movies/{id}/progress`
-- `GET /recommendations`
-- `GET /home`
-- `GET /profile`
-- `GET /profile/insights`
-
-WebSocket endpoint:
-
-- `/ws/notifications?token=<jwt>`
-
-Admin endpoints:
-
-- `GET /admin/stats`
-- `GET /admin/users`
-- `GET /admin/movies`
-- `GET /admin/reviews`
-- `PUT /admin/users/{id}/status`
-- `DELETE /admin/reviews/{id}`
-- `GET /admin/analytics`
-- `POST /movies/{id}/summary/regenerate`
-- `POST /admin/recommendations/recompute`
-- `DELETE /admin/recommendations/cache`
-
-## Performance and Scalability Notes
-
-- Compound indexes now support common read patterns for movies, notifications, analytics, ratings, favorites, watchlists, and progress.
-- AI search avoids unnecessary N+1 genre loads.
-- Admin review reads eagerly load related users to avoid repeated queries.
-- Recommendation inputs invalidate consistently across ratings, reviews, favorites, watchlists, progress, and movie mutations.
-- The modular monolith remains the right architecture now; future service boundaries are documented in [docs/system-design.md](docs/system-design.md).
-
-## Load Testing and Benchmarking
-
-Locust smoke configuration lives in [load-tests/locustfile.py](load-tests/locustfile.py).
-
-Example local smoke run:
-
-```powershell
-backend\.venv\Scripts\locust.exe -f load-tests\locustfile.py --headless --users 5 --spawn-rate 1 --run-time 30s
-```
-
-This setup is intended for light local verification, not destructive stress tests.
-
-## Testing and Validation
-
-Backend:
-
-```powershell
-backend\.venv\Scripts\python.exe -m pytest backend\tests -q --disable-warnings
-```
-
-Frontend:
-
-```powershell
-cd frontend
 npm run lint
 npm run build
 ```
 
-Current verified status on Wednesday, August 26, 2026:
+Optional Locust smoke tests are documented in [load-tests/README.md](load-tests/README.md).
 
-- `49` backend tests passing
-- frontend lint passing
-- frontend production build passing
+## Deployment
 
-## Continuous Integration
+Deploy the frontend to Vercel and the backend to Render with PostgreSQL. Redis is optional but recommended when running multiple API instances.
 
-GitHub Actions workflow: `.github/workflows/ci.yml`
+See [the deployment guide](docs/deployment.md) for environment configuration and migration details.
 
-CI runs:
+## Project Structure
 
-- backend dependency installation
-- Alembic revision validation
-- `alembic upgrade head`
-- backend pytest
-- frontend dependency installation
-- frontend lint
-- frontend production build
-- `docker compose config`
+```text
+streamsphere/
+|-- .github/workflows/ci.yml
+|-- backend/
+|   |-- alembic/
+|   |-- app/
+|   `-- tests/
+|-- docs/
+|   |-- architecture-summary.md
+|   |-- demo-playback.md
+|   |-- deployment.md
+|   `-- system-design.md
+|-- frontend/
+|   |-- app/
+|   |-- components/
+|   `-- lib/
+|-- load-tests/
+|-- docker-compose.yml
+`-- .env.example
+```
 
-## Portfolio Materials
+## Demo Media Attribution
 
-- [Architecture summary](docs/architecture-summary.md)
-- [Interview guide](docs/interview-guide.md)
-- [Resume summary](docs/resume-summary.md)
-- [Demo checklist](docs/demo-checklist.md)
-- [Final project report](docs/final-project-report.md)
-
-## Notes
-
-- Real `.env` files must never be committed.
-- Redis fallback is expected to report `degraded` health when Redis is unavailable.
-- Existing bcrypt password hashes remain verifiable for compatibility; new password hashes use Argon2.
-- `npm audit --omit=dev` currently reports four high-severity transitive advisories in the Next.js dependency tree. The available fix requires upgrading beyond the pinned Next.js version, so it is documented for a deliberate dependency-update pass rather than applied automatically.
+The seeded catalog titles are fictional. Playback uses legal, openly licensed demo footage through the native HTML5 player and is not represented as original movie footage or trailers. See [demo media attribution](docs/demo-playback.md).
 
 ## License
 

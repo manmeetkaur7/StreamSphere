@@ -1,211 +1,71 @@
 # StreamSphere System Design
 
-## Product Overview
+## Scope
 
-StreamSphere is a streaming discovery platform that combines a movie catalog, user engagement features, admin tooling, and AI-assisted discovery in one modular monolith. The product supports catalog browsing, reviews, ratings, watchlists, favorites, recommendations, notifications, and platform analytics.
+StreamSphere is a movie discovery application with a catalog, user libraries, reviews, recommendations, notifications, and admin tools. It is a modular monolith: the backend is deployed as one FastAPI application, while domain boundaries remain explicit in route, service, model, and schema modules.
 
-## Functional Requirements
-
-- User registration and JWT login
-- Movie catalog CRUD with genres, filters, and pagination
-- Watchlist, favorites, ratings, reviews, and profile views
-- AI search, AI summaries, personalized recommendations, and personalized home feed
-- Continue watching and watch-progress tracking
-- Real-time notifications over WebSockets with REST fallback
-- Admin moderation, admin analytics, and user management
-- Health, metrics, caching, rate limiting, and structured logging
-
-## Non-Functional Requirements
-
-- PostgreSQL-backed durability
-- Redis-backed caching with in-memory fallback
-- Safe degradation when Redis or AI providers are unavailable
-- Stateless API instances for horizontal scaling
-- Observable request, cache, AI, and WebSocket behavior
-- Backward-compatible API evolution where practical
-- Incremental migration path using Alembic
-
-## Architecture Diagram
+## Runtime Architecture
 
 ```mermaid
 flowchart LR
-    Browser[Next.js Frontend] --> API[FastAPI Modular Monolith]
+    Browser[Next.js frontend] --> API[FastAPI API]
     API --> PG[(PostgreSQL)]
-    API --> Redis[(Redis Cache)]
-    API --> AI[AI Provider Abstraction]
-    API --> WS[WebSocket Notification Manager]
-    API --> BG[BackgroundTasks Dispatcher]
-    BG --> PG
-    BG --> Redis
-    BG --> AI
+    API --> Redis[(Redis)]
+    API --> AI[AI provider]
+    API --> WS[WebSocket manager]
+    API --> Jobs[Background task dispatcher]
 ```
 
-## Frontend Architecture
+- Next.js renders catalog pages and hosts client-side authenticated interactions.
+- FastAPI owns REST and WebSocket contracts, validation, authorization, and domain services.
+- PostgreSQL is the source of truth for catalog, user, engagement, notification, and analytics data.
+- Redis supports shared caching and rate limiting when configured. Local in-memory fallbacks keep development and degraded operation usable.
+- The AI provider interface keeps mock behavior deterministic for tests and establishes a boundary for a future provider implementation.
 
-- Next.js App Router provides route composition and static/dynamic rendering boundaries.
-- Server-side catalog reads use fetch-based data access where possible.
-- Authenticated interactions live in client components where JWT access tokens are needed.
-- NotificationCenter uses WebSockets first and falls back to REST polling.
-- `next/image` is used on key poster surfaces to reduce image-related layout and bandwidth costs.
+## Backend Boundaries
 
-## Backend Architecture
+`app/api/` contains HTTP and WebSocket endpoints. `app/services/` owns recommendation, search, summary, notification, cache, analytics, and background-work behavior. `app/models/` and `app/schemas/` separate persistence from request and response contracts.
 
-- FastAPI route modules are grouped by domain: auth, movies, engagement, AI, notifications, profile, admin, health, and metrics.
-- SQLAlchemy models and services stay inside one codebase with explicit boundaries.
-- Business logic is pushed into services such as recommendations, analytics, summaries, notifications, and metrics.
-- Background work is abstracted through `BackgroundJobDispatcher`, which currently uses FastAPI `BackgroundTasks`.
+Routes stay thin: they validate inputs, resolve dependencies, call services, and return schemas. Services own invalidation and cross-domain behavior so mutations such as ratings, reviews, favorites, watchlists, and progress updates can refresh recommendation inputs consistently.
 
-## Database Architecture
+## Data Model
 
-- PostgreSQL is the system of record.
-- Core tables: `users`, `movies`, `genres`, `movie_genres`, `watchlists`, `favorites`, `ratings`, `reviews`, `watch_progress`, `movie_summaries`, `recommendation_cache`, `notifications`, `activity_events`.
-- Sprint 9 adds compound indexes for high-frequency paths such as movie sorting, notification unread reads, profile progress, and analytics aggregations.
-- Alembic provides schema management while preserving local data through a stamp-first baseline strategy for already-populated databases.
+PostgreSQL stores users, movies, genres, movie-to-genre relationships, favorites, watchlists, ratings, reviews, watch progress, summaries, recommendation cache entries, notifications, and activity events. Foreign keys, uniqueness constraints, and targeted indexes support catalog filtering, user-library reads, and admin analytics.
 
-## Caching Strategy
+Alembic manages schema changes. Existing local databases use the documented baseline process before applying later revisions.
 
-- Redis is the preferred cache backend.
-- In-memory fallback keeps the platform usable when Redis is disabled or unavailable.
-- Cached flows:
-  - AI search responses
-  - AI summaries
-  - recommendation payloads
-- Invalidation triggers:
-  - ratings, reviews, favorites, watchlists, and progress updates invalidate the affected user's recommendation cache
-  - movie updates and deletes invalidate recommendation caches globally and clear summary cache for the affected movie
-- Cache keys are namespaced to prevent cross-user data leakage.
+## Request And Cache Flow
 
-## WebSocket Architecture
+Catalog queries read from PostgreSQL. AI search results, movie summaries, and recommendation payloads can be cached. Cache entries are namespaced and user-scoped where necessary. Engagement mutations invalidate the affected recommendation data; catalog changes invalidate relevant shared results.
 
-- `/ws/notifications` authenticates with the same JWT used for REST requests.
-- Connections are tracked by user ID, not by browser session ID alone.
-- Multiple tabs or devices for the same user can stay connected simultaneously.
-- Disconnects are handled gracefully, and the frontend falls back to REST polling when the socket is unavailable.
+When Redis is unavailable, the API uses local fallback implementations and reports degraded dependency health. That fallback is appropriate for a single process or local development, not for coordinating multiple API instances.
 
-## AI Provider Architecture
+## Notifications And Background Work
 
-- `AIProvider` is the provider interface.
-- `MockAIProvider` is the default implementation for local development and tests.
-- `OpenAIProvider` remains a placeholder boundary for future integration.
-- Sprint 9 adds resilience around provider calls:
-  - request timeout
-  - bounded retry count
-  - graceful fallback payloads
-  - AI failure metrics
+The notification service persists an event before delivering it to active WebSocket connections. The frontend can fall back to REST polling when a socket is unavailable.
 
-## Background Jobs
+FastAPI `BackgroundTasks` handles non-blocking work such as notification delivery, summary generation, and recommendation refreshes. It keeps request handlers responsive but is not durable across process restarts.
 
-- Current background execution uses FastAPI `BackgroundTasks`.
-- Jobs include:
-  - notification creation
-  - recommendation refresh
-  - summary regeneration
-- This keeps routes thin while preserving a future path to Celery, RQ, or another queue.
+## Security Boundaries
 
-## Authentication Flow
+JWT bearer tokens protect authenticated REST routes and notification WebSockets. Route dependencies enforce active-user, ownership, and administrator checks. Configuration controls CORS, rate limiting, security headers, structured logs, and production startup validation.
 
-1. User registers with email, username, and password.
-2. Password is hashed with Argon2 for new accounts.
-3. Login returns a JWT bearer token.
-4. Protected REST routes use bearer auth.
-5. WebSocket notification connections authenticate with the same JWT token.
+## Operational Considerations
 
-## Recommendation Flow
+The application can run behind a load balancer when PostgreSQL and Redis are shared services. Use Redis for consistent cache and rate-limit state across API instances. Monitor `/health`, `/metrics`, request logs, cache behavior, AI failures, and WebSocket connection health.
 
-1. User ratings, favorites, watchlist entries, and reviews build preference signals.
-2. Recommendation service derives top genres and unseen candidates.
-3. Results are cached per user.
-4. User-affecting mutations invalidate and refresh recommendation inputs.
+If background work becomes slow or reliability-sensitive, move it to a durable queue and worker process. If analytics or recommendation workloads dominate normal API traffic, separate those workloads based on measured demand rather than a predefined service split.
 
-## Notification Flow
+## Current Tradeoffs
 
-1. Domain event occurs, such as rating save, watchlist add, review interaction, or movie completion.
-2. Background dispatcher creates a `notifications` row.
-3. Notification service pushes the payload to every active socket for that user.
-4. Frontend updates unread count live; REST remains available for refresh and ownership-safe mutation.
+- A modular monolith reduces deployment and local-development overhead while the product evolves.
+- The mock AI provider supports deterministic tests but does not provide model-backed semantic reasoning.
+- In-memory cache and rate-limit fallbacks favor availability over cross-instance consistency.
+- Background tasks simplify the current deployment but do not provide retries or durable delivery.
 
-## Scalability Path
+## Next Improvements
 
-### 1,000 Users
-
-- Single PostgreSQL instance
-- Single Redis instance
-- 1-3 API instances behind a basic load balancer
-- BackgroundTasks remain acceptable
-
-### 100,000 Users
-
-- Horizontal API scaling behind a load balancer
-- Connection pooling and tighter Postgres tuning
-- Read replicas for analytics and heavy read paths
-- Redis moved to managed HA deployment
-- CDN for frontend assets and poster/media delivery
-- Background tasks moved to a real queue and worker pool
-- WebSocket fan-out externalized through Redis pub/sub or a socket gateway
-
-### 10 Million Users
-
-- Regional API fleets with stateless containers
-- Managed Postgres with partitioning, read replicas, and possibly service decomposition for write-heavy domains
-- Redis cluster or sharded managed cache
-- CDN plus object storage for all media and static assets
-- Dedicated analytics pipeline and warehouse
-- Dedicated recommendation infrastructure, potentially batch + online features
-- Queue-backed notification pipeline and distributed WebSocket delivery layer
-
-## Microservices Decision
-
-The modular monolith is the correct architecture today because:
-
-- product scope is still evolving quickly
-- cross-domain changes remain common
-- deployment simplicity matters more than organizational separation
-- local development and testing are still fast enough
-
-Potential future service boundaries:
-
-- auth
-- catalog
-- recommendations
-- notifications
-- analytics
-- media processing
-
-Triggers for extraction:
-
-- separate scaling requirements
-- independent deploy cadence becomes a bottleneck
-- team ownership boundaries become stable
-- queue- or compute-heavy workloads dominate one domain
-
-## Failure Mode Analysis
-
-### PostgreSQL unavailable
-
-- Current behavior: `/health` becomes `503`, request handlers fail, clients receive safe error responses.
-- Recommended production behavior: fail fast, alert immediately, and keep static frontend surfaces available.
-
-### Redis unavailable
-
-- Current behavior: cache and rate limiting fall back to in-memory implementations where supported; `/health` reports `degraded`.
-- Recommended production behavior: alert, monitor increased database load, and restore Redis quickly.
-
-### AI provider unavailable
-
-- Current behavior: search and summary endpoints return graceful fallback payloads instead of crashing the movie platform.
-- Recommended production behavior: circuit-break noisy providers and alert on failure rate.
-
-### WebSocket drops
-
-- Current behavior: connection manager cleans up sockets; frontend falls back to REST refresh.
-- Recommended production behavior: retry with backoff and track disconnect rates.
-
-### Background task fails
-
-- Current behavior: failure is isolated to the task and logged; user-facing REST request can still succeed.
-- Recommended production behavior: move tasks to durable queues with retries and dead-letter handling.
-
-### Frontend cannot reach backend
-
-- Current behavior: client components show fetch errors; server-rendered pages can fail if required backend data is unavailable.
-- Recommended production behavior: show explicit degraded states and route-level retry guidance.
+- Implement the provider boundary with an approved external AI service.
+- Add browser end-to-end tests for critical authenticated flows.
+- Introduce durable jobs for work that must survive process restarts.
+- Tighten the content security policy as frontend requirements allow.
