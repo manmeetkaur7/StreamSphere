@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 export interface MovieCardProps {
+  id: number;
   title: string;
   year: number;
   duration: string;
@@ -19,6 +22,7 @@ export function MovieCardSkeleton() {
 }
 
 export default function MovieCard({
+  id,
   title,
   year,
   duration,
@@ -26,7 +30,8 @@ export default function MovieCard({
   image,
 }: MovieCardProps) {
   return (
-    <article className="group min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[#111111] shadow-lg shadow-black/20 transition-all duration-300 ease-out hover:z-10 hover:scale-[1.03] hover:border-white/20 hover:shadow-[0_16px_40px_rgba(229,9,20,0.28)] focus-within:z-10 focus-within:scale-[1.03] focus-within:border-white/20 focus-within:shadow-[0_16px_40px_rgba(229,9,20,0.28)]">
+    <Link href={`/movies/${id}`} aria-label={`Open ${title} preview`} className="group block min-w-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E50914]">
+      <article className="overflow-hidden rounded-xl border border-white/10 bg-[#111111] shadow-lg shadow-black/20 transition-all duration-300 ease-out group-hover:z-10 group-hover:scale-[1.03] group-hover:border-white/20 group-hover:shadow-[0_16px_40px_rgba(229,9,20,0.28)] group-focus-visible:scale-[1.03] group-focus-visible:border-white/20 group-focus-visible:shadow-[0_16px_40px_rgba(229,9,20,0.28)]">
       <div
         aria-label={`${title} poster placeholder`}
         className="relative aspect-[2/3] overflow-hidden bg-cover bg-center"
@@ -38,15 +43,14 @@ export default function MovieCard({
           ★ {rating.toFixed(1)}
         </span>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/25 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100">
-          <button
-            type="button"
-            aria-label={`Play ${title}`}
+          <span
+            aria-hidden="true"
             className="flex h-11 w-11 items-center justify-center rounded-full bg-[#E50914] text-white shadow-lg shadow-black/40 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             <svg aria-hidden="true" className="ml-0.5 h-5 w-5 fill-current" viewBox="0 0 24 24">
               <path d="M8 5.14v13.72a1 1 0 0 0 1.54.84l10.14-6.86a1 1 0 0 0 0-1.68L9.54 4.3A1 1 0 0 0 8 5.14Z" />
             </svg>
-          </button>
+          </span>
           <span className="rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white backdrop-blur-md">
             {year} · ★ {rating.toFixed(1)}
           </span>
@@ -60,6 +64,7 @@ export default function MovieCard({
           <span>{duration}</span>
         </div>
       </div>
-    </article>
+      </article>
+    </Link>
   );
 }

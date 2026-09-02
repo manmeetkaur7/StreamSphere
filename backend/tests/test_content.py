@@ -2,11 +2,12 @@ from contextlib import contextmanager
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from app.core.auth import get_current_user
 from app.db.base import Base, register_models
 from app.db.database import engine
+from app.db.session import SessionLocal
 from app.models.activity_event import ActivityEvent
 from app.models.genre import Genre
 from app.models.movie import Movie
@@ -14,6 +15,7 @@ from app.models.movie_genre import MovieGenre
 from app.models.notification import Notification
 from app.models.user import User
 from app import main
+from app.services.content_seed import _replace_placeholder_playback_urls
 
 
 @contextmanager
@@ -208,3 +210,53 @@ def test_movie_pagination(client: TestClient) -> None:
     assert payload["total_pages"] == 3
     assert len(payload["items"]) == 5
     assert payload["items"][0]["release_year"] == 2016
+
+
+def test_seed_playback_repair_updates_only_legacy_placeholders(client: TestClient) -> None:
+    entries = [
+        Movie(
+            title="Neon Horizon",
+            description="A legacy seeded movie used to verify legal sample playback URL repair.",
+            release_year=2025,
+            duration_minutes=100,
+            poster_url="https://example.com/posters/neon.jpg",
+            trailer_url="https://example.com/trailers/neon-horizon",
+            maturity_rating="PG",
+            language="English",
+        ),
+        Movie(
+            title="After the Silence",
+            description="A legacy seeded movie used to verify legal sample playback URL repair.",
+            release_year=2025,
+            duration_minutes=100,
+            poster_url="https://example.com/posters/silence.jpg",
+            trailer_url="https://example.com/trailers/after-the-silence",
+            maturity_rating="PG",
+            language="English",
+        ),
+        Movie(
+            title="Paper Planets",
+            description="A curated movie URL must not be replaced by the seed repair.",
+            release_year=2025,
+            duration_minutes=100,
+            poster_url="https://example.com/posters/planets.jpg",
+            trailer_url="https://example.org/custom-preview.mp4",
+            maturity_rating="PG",
+            language="English",
+        ),
+    ]
+    with SessionLocal() as db:
+        db.add_all(entries)
+        db.commit()
+
+        assert _replace_placeholder_playback_urls(db) is True
+        db.commit()
+
+        urls = {
+            movie.title: movie.trailer_url
+            for movie in db.scalars(select(Movie).where(Movie.title.in_([entry.title for entry in entries]))).all()
+        }
+
+    assert urls["Neon Horizon"].endswith("flower.mp4")
+    assert urls["After the Silence"].endswith("sintel/trailer.mp4")
+    assert urls["Paper Planets"] == "https://example.org/custom-preview.mp4"

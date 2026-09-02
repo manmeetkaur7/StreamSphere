@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Hero() {
   return (
     <section
@@ -33,18 +35,18 @@ export default function Hero() {
             A team of explorers travel beyond our galaxy in search of humanity&apos;s future.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a
-              href="#movies"
+            <Link
+              href="/movies"
               className="inline-flex h-12 items-center justify-center rounded-md bg-[#E50914] px-7 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-[#b80710] hover:shadow-[0_12px_28px_rgba(229,9,20,0.35)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#E50914]"
             >
               ▶&nbsp; Play
-            </a>
-            <a
-              href="#about"
+            </Link>
+            <Link
+              href="/movies"
               className="inline-flex h-12 items-center justify-center rounded-md border border-white/25 bg-white/10 px-7 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:border-white/50 hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
             >
               ⓘ&nbsp; More Info
-            </a>
+            </Link>
           </div>
         </div>
       </div>

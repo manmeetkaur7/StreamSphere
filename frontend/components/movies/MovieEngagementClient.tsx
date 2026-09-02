@@ -7,6 +7,7 @@ import Link from "next/link";
 import { clearAccessToken, fetchWithAuth, getAccessToken, resolveApiBaseUrl } from "@/lib/auth";
 import type { FavoriteItem, Movie, Review, WatchlistItem } from "@/lib/catalog";
 import { fetchMovie, formatDuration } from "@/lib/catalog";
+import MoviePreviewPlayer from "@/components/movies/MoviePreviewPlayer";
 
 interface MovieEngagementClientProps {
   initialMovie: Movie;
@@ -272,15 +273,9 @@ export default function MovieEngagementClient({ initialMovie }: MovieEngagementC
           </div>
         </div>
 
+        <MoviePreviewPlayer title={movie.title} trailerUrl={movie.trailer_url} />
+
         <div className="flex flex-col gap-3 sm:flex-row">
-          <a
-            href={movie.trailer_url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#E50914] px-6 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#c50b14]"
-          >
-            Watch Trailer
-          </a>
           <button type="button" onClick={() => void toggleWatchlist()} disabled={busyAction === "watchlist"} className="inline-flex h-12 items-center justify-center rounded-2xl border border-white/15 px-6 text-sm font-semibold text-white/80 transition hover:border-white/35 hover:bg-white/[0.04] hover:text-white disabled:cursor-not-allowed disabled:opacity-60">
             {watchlisted ? "Remove from Watchlist" : "Add to Watchlist"}
           </button>

@@ -21,7 +21,7 @@ SEED_MOVIES = [
         "release_year": 2025,
         "duration_minutes": 128,
         "poster_url": "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=80",
-        "trailer_url": "https://example.com/trailers/neon-horizon",
+        "trailer_url": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
         "maturity_rating": "PG-13",
         "language": "English",
         "genres": ["Action", "Sci-Fi"],
@@ -32,7 +32,7 @@ SEED_MOVIES = [
         "release_year": 2024,
         "duration_minutes": 136,
         "poster_url": "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80",
-        "trailer_url": "https://example.com/trailers/after-the-silence",
+        "trailer_url": "https://media.w3.org/2010/05/sintel/trailer.mp4",
         "maturity_rating": "PG-13",
         "language": "English",
         "genres": ["Drama"],
@@ -65,7 +65,7 @@ SEED_MOVIES = [
         "release_year": 2022,
         "duration_minutes": 95,
         "poster_url": "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80",
-        "trailer_url": "https://example.com/trailers/paper-planets",
+        "trailer_url": "https://media.w3.org/2010/05/bunny/trailer.mp4",
         "maturity_rating": "PG",
         "language": "English",
         "genres": ["Animation", "Drama"],
@@ -238,10 +238,24 @@ SEED_MOVIES = [
 ]
 
 
+def _replace_placeholder_playback_urls(db) -> bool:
+    """Repair only legacy seed placeholders without overwriting curated movie URLs."""
+    updated = False
+    seed_urls = {movie["title"]: movie["trailer_url"] for movie in SEED_MOVIES}
+    for title in ("Neon Horizon", "After the Silence", "Paper Planets"):
+        movie = db.scalar(select(Movie).where(Movie.title == title))
+        if movie is not None and movie.trailer_url.startswith("https://example.com/trailers/"):
+            movie.trailer_url = seed_urls[title]
+            updated = True
+    return updated
+
+
 def seed_content_data() -> None:
     with SessionLocal() as db:
         existing_movie = db.scalar(select(Movie.id).limit(1))
         if existing_movie is not None:
+            if _replace_placeholder_playback_urls(db):
+                db.commit()
             return
 
         genres = {

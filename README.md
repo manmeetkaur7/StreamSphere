@@ -38,6 +38,7 @@
 
 Capture the landing page, catalog filters, movie engagement, profile insights, and admin analytics using the [demo checklist](docs/demo-checklist.md). Use seeded demo content only and do not include personal account details or tokens in screenshots.
 - Load testing: [load-tests/README.md](load-tests/README.md)
+- Legal demo playback: [docs/demo-playback.md](docs/demo-playback.md)
 
 ## Repository Layout
 

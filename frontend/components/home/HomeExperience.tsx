@@ -11,6 +11,7 @@ import { clearAccessToken, fetchWithAuth, getAccessToken } from "@/lib/auth";
 
 function toMovieCard(movie: Movie): MovieCardProps {
   return {
+    id: movie.id,
     title: movie.title,
     year: movie.release_year,
     duration: formatDuration(movie.duration_minutes),
