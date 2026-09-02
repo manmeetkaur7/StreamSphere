@@ -32,6 +32,7 @@ export default function MoviePreviewPlayer({ title, trailerUrl }: { title: strin
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const source = SAMPLE_SOURCES[trailerUrl];
+  const isDemoPreview = source !== undefined;
   const canPlay = isDirectVideoUrl(trailerUrl);
 
   async function playPreview() {
@@ -45,7 +46,7 @@ export default function MoviePreviewPlayer({ title, trailerUrl }: { title: strin
   if (!canPlay) {
     return (
       <section className="rounded-[2rem] border border-dashed border-white/15 bg-[#0d0d0d] p-6">
-        <h2 className="text-lg font-semibold text-white">Sample Playback</h2>
+        <h2 className="text-lg font-semibold text-white">Preview</h2>
         <p className="mt-3 text-sm leading-6 text-white/60">Preview unavailable for this title.</p>
       </section>
     );
@@ -56,7 +57,7 @@ export default function MoviePreviewPlayer({ title, trailerUrl }: { title: strin
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#ff8b92]">Legal demo media</p>
-          <h2 className="mt-2 text-xl font-semibold text-white">Sample Playback</h2>
+          <h2 className="mt-2 text-xl font-semibold text-white">{isDemoPreview ? "Demo Preview" : "Preview"}</h2>
         </div>
         <button
           type="button"
@@ -64,7 +65,7 @@ export default function MoviePreviewPlayer({ title, trailerUrl }: { title: strin
           disabled={loading || failed}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-[#E50914] px-5 text-sm font-semibold text-white transition hover:bg-[#c50b14] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Loading preview..." : "Play sample video"}
+          {loading ? "Loading preview..." : isDemoPreview ? "Play Demo Preview" : "Watch Preview"}
         </button>
       </div>
 
@@ -89,7 +90,7 @@ export default function MoviePreviewPlayer({ title, trailerUrl }: { title: strin
       </div>
 
       <p className="mt-4 text-xs leading-5 text-white/45">
-        {source?.attribution ?? "Direct video source supplied for this catalog entry."} This sample is provided only to demonstrate the player and is not a full version of {title}.
+        {source?.attribution ?? "Direct video source supplied for this catalog entry."} {isDemoPreview ? "This is a legal demo playback sample and is not the original movie or trailer." : `This preview is not a full version of ${title}.`}
       </p>
     </section>
   );

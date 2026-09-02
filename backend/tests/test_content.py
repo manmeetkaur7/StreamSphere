@@ -15,7 +15,11 @@ from app.models.movie_genre import MovieGenre
 from app.models.notification import Notification
 from app.models.user import User
 from app import main
-from app.services.content_seed import _replace_placeholder_playback_urls
+from app.services.content_seed import (
+    FALLBACK_DEMO_PLAYBACK_URLS,
+    _replace_placeholder_playback_urls,
+    seed_content_data,
+)
 
 
 @contextmanager
@@ -244,6 +248,16 @@ def test_seed_playback_repair_updates_only_legacy_placeholders(client: TestClien
             maturity_rating="PG",
             language="English",
         ),
+        Movie(
+            title="City of Echoes",
+            description="A legacy placeholder should receive a deterministic legal demo fallback.",
+            release_year=2025,
+            duration_minutes=100,
+            poster_url="https://example.com/posters/city.jpg",
+            trailer_url="https://example.com/trailers/city-of-echoes",
+            maturity_rating="PG",
+            language="English",
+        ),
     ]
     with SessionLocal() as db:
         db.add_all(entries)
@@ -260,3 +274,14 @@ def test_seed_playback_repair_updates_only_legacy_placeholders(client: TestClien
     assert urls["Neon Horizon"].endswith("flower.mp4")
     assert urls["After the Silence"].endswith("sintel/trailer.mp4")
     assert urls["Paper Planets"] == "https://example.org/custom-preview.mp4"
+    assert urls["City of Echoes"] in FALLBACK_DEMO_PLAYBACK_URLS
+
+
+def test_new_seed_catalog_assigns_playable_demo_media(client: TestClient) -> None:
+    seed_content_data()
+
+    with SessionLocal() as db:
+        seeded_movies = list(db.scalars(select(Movie)).all())
+
+    assert len(seeded_movies) == 20
+    assert all(movie.trailer_url in FALLBACK_DEMO_PLAYBACK_URLS for movie in seeded_movies)

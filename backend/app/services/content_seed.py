@@ -237,15 +237,29 @@ SEED_MOVIES = [
     },
 ]
 
+TITLE_DEMO_PLAYBACK_URLS = {
+    "Neon Horizon": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+    "After the Silence": "https://media.w3.org/2010/05/sintel/trailer.mp4",
+    "Paper Planets": "https://media.w3.org/2010/05/bunny/trailer.mp4",
+}
+FALLBACK_DEMO_PLAYBACK_URLS = tuple(TITLE_DEMO_PLAYBACK_URLS.values())
+
+
+def _demo_playback_url_for_title(title: str) -> str:
+    title_mapping = TITLE_DEMO_PLAYBACK_URLS.get(title)
+    if title_mapping is not None:
+        return title_mapping
+    return FALLBACK_DEMO_PLAYBACK_URLS[sum(ord(character) for character in title) % len(FALLBACK_DEMO_PLAYBACK_URLS)]
+
 
 def _replace_placeholder_playback_urls(db) -> bool:
     """Repair only legacy seed placeholders without overwriting curated movie URLs."""
     updated = False
-    seed_urls = {movie["title"]: movie["trailer_url"] for movie in SEED_MOVIES}
-    for title in ("Neon Horizon", "After the Silence", "Paper Planets"):
+    for movie_data in SEED_MOVIES:
+        title = movie_data["title"]
         movie = db.scalar(select(Movie).where(Movie.title == title))
         if movie is not None and movie.trailer_url.startswith("https://example.com/trailers/"):
-            movie.trailer_url = seed_urls[title]
+            movie.trailer_url = _demo_playback_url_for_title(title)
             updated = True
     return updated
 
@@ -278,7 +292,7 @@ def seed_content_data() -> None:
                 release_year=movie_data["release_year"],
                 duration_minutes=movie_data["duration_minutes"],
                 poster_url=movie_data["poster_url"],
-                trailer_url=movie_data["trailer_url"],
+                trailer_url=_demo_playback_url_for_title(movie_data["title"]),
                 maturity_rating=movie_data["maturity_rating"],
                 language=movie_data["language"],
             )
