@@ -11,8 +11,45 @@ const SUGGESTIONS = [
   { label: "Sci-Fi", query: "Thoughtful science fiction movies" },
   { label: "Date Night", query: "Romantic movies for date night" },
   { label: "Mind-Bending", query: "Mind-bending movies with a mystery" },
-  { label: "Under 2 Hours", query: "Great movies under two hours" },
+  { label: "Under 2 Hours", query: "Something emotional and futuristic, but not too scary" },
 ];
+
+const HERO_MOVIE_PREVIEWS = [
+  {
+    title: "Neon Horizon",
+    year: 2025,
+    posterUrl: "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=900&q=80",
+  },
+  {
+    title: "After the Silence",
+    year: 2024,
+    posterUrl: "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=900&q=80",
+  },
+  {
+    title: "Paper Planets",
+    year: 2022,
+    posterUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80",
+  },
+];
+
+function HeroMoviePreview({
+  title,
+  year,
+  posterUrl,
+  className,
+}: (typeof HERO_MOVIE_PREVIEWS)[number] & { className: string }) {
+  return (
+    <article className={`absolute overflow-hidden rounded-2xl border border-white/15 bg-[#15172f] shadow-[0_24px_55px_rgba(0,0,0,0.48)] ${className}`}>
+      <div className="relative aspect-[2/3] bg-cover bg-center" style={{ backgroundImage: `url(${posterUrl})` }}>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#070817] via-transparent to-black/10" />
+        <div className="absolute inset-x-0 bottom-0 p-3">
+          <p className="truncate text-sm font-semibold text-white">{title}</p>
+          <p className="mt-1 text-xs text-white/60">{year} &middot; AI pick</p>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 function toMovieCard(movie: Movie): MovieCardProps {
   return {
@@ -54,13 +91,15 @@ export default function Hero() {
   }
 
   return (
-    <section id="home" className="relative overflow-hidden bg-[#070817] px-6 pb-16 pt-32 sm:px-8 sm:pb-24 lg:px-10 lg:pb-28">
+    <section id="home" className="relative overflow-hidden bg-[#070817] px-6 pb-14 pt-28 sm:px-8 sm:pb-16 lg:px-10 lg:py-24">
       <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_78%_20%,rgba(126,72,255,0.22),transparent_29%),radial-gradient(circle_at_13%_82%,rgba(229,9,20,0.16),transparent_25%),linear-gradient(135deg,#070817_0%,#0b0d22_54%,#070817_100%)]" />
       <div aria-hidden="true" className="absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:48px_48px]" />
       <div aria-hidden="true" className="absolute right-[-7rem] top-28 h-72 w-72 rounded-full border border-fuchsia-300/10 bg-fuchsia-400/5 blur-3xl sm:h-96 sm:w-96" />
 
       <div className="relative mx-auto w-full max-w-7xl">
-        <div className="max-w-4xl animate-[heroFade_0.8s_ease-out_both]">
+        <div className="items-center gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] lg:gap-10 xl:gap-16">
+          <div className="min-w-0">
+            <div className="max-w-4xl animate-[heroFade_0.8s_ease-out_both]">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#ff8b92]">AI movie discovery</p>
           <h1 className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.06] tracking-tight text-white sm:text-6xl lg:text-7xl">
             Don&apos;t search for a movie. Describe the mood.
@@ -68,9 +107,9 @@ export default function Hero() {
           <p className="mt-6 max-w-2xl text-base leading-7 text-white/70 sm:text-lg sm:leading-8">
             Tell StreamSphere what you&apos;re in the mood for and discover movies through AI-assisted search and personalized recommendations.
           </p>
-        </div>
+            </div>
 
-        <div className="relative mt-10 max-w-4xl animate-[heroFade_0.8s_0.12s_ease-out_both] rounded-[1.75rem] border border-white/12 bg-[#111329]/80 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.38)] backdrop-blur sm:p-5">
+            <div className="relative mt-8 max-w-4xl animate-[heroFade_0.8s_0.12s_ease-out_both] rounded-[1.75rem] border border-white/12 bg-[#111329]/80 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.38)] backdrop-blur sm:p-5">
           <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row">
             <label className="sr-only" htmlFor="hero-ai-query">
               Describe the movie you want to watch
@@ -104,6 +143,20 @@ export default function Hero() {
                 {suggestion.label}
               </button>
             ))}
+          </div>
+            </div>
+          </div>
+
+          <div aria-hidden="true" className="relative mx-auto mt-10 h-[250px] w-full max-w-[340px] lg:mt-0 lg:h-[390px] lg:max-w-none">
+            <div className="absolute inset-8 rounded-full bg-fuchsia-400/12 blur-3xl" />
+            <HeroMoviePreview {...HERO_MOVIE_PREVIEWS[0]} className="left-1/2 top-0 z-20 w-[154px] -translate-x-1/2 sm:w-[174px] lg:w-[205px]" />
+            <div className="hidden sm:block">
+              <HeroMoviePreview {...HERO_MOVIE_PREVIEWS[1]} className="left-0 top-16 z-10 w-[124px] -rotate-[10deg] opacity-85 lg:w-[150px]" />
+              <HeroMoviePreview {...HERO_MOVIE_PREVIEWS[2]} className="right-0 top-24 z-10 w-[118px] rotate-[9deg] opacity-85 lg:w-[142px]" />
+            </div>
+            <p className="absolute bottom-0 left-1/2 z-30 w-max -translate-x-1/2 rounded-full border border-white/10 bg-[#111329]/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70 shadow-lg">
+              Recommendations taking shape
+            </p>
           </div>
         </div>
 
