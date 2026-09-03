@@ -14,6 +14,13 @@ export function resolveApiBaseUrl() {
 }
 
 const ACCESS_TOKEN_KEY = "streamsphere_access_token";
+export const AUTH_STATE_CHANGE_EVENT = "streamsphere-auth-state-changed";
+
+function notifyAuthStateChange() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_STATE_CHANGE_EVENT));
+  }
+}
 
 export function getAccessToken() {
   if (typeof window === "undefined") {
@@ -25,10 +32,12 @@ export function getAccessToken() {
 
 export function saveAccessToken(accessToken: string) {
   window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  notifyAuthStateChange();
 }
 
 export function clearAccessToken() {
   window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+  notifyAuthStateChange();
 }
 
 export async function loginWithCredentials(identifier: string, password: string) {

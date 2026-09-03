@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import NotificationCenter from "@/components/layout/NotificationCenter";
-import { clearAccessToken, getAccessToken } from "@/lib/auth";
+import { AUTH_STATE_CHANGE_EVENT, clearAccessToken, fetchWithAuth, getAccessToken } from "@/lib/auth";
 import type { Profile } from "@/lib/catalog";
-import { fetchWithAuth } from "@/lib/auth";
 
 function SearchIcon() {
   return (
@@ -26,37 +26,69 @@ function SearchIcon() {
 export default function Navbar() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [authenticated, setAuthenticated] = useState(() => Boolean(getAccessToken()));
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     let active = true;
-    const token = getAccessToken();
 
-    if (!token) {
-      return;
-    }
+    async function syncAuthenticationState() {
+      const token = getAccessToken();
+      if (!token) {
+        if (active) {
+          setAuthenticated(false);
+          setProfile(null);
+          setProfileMenuOpen(false);
+        }
+        return;
+      }
 
-    void fetchWithAuth<Profile>("/profile")
-      .then((payload) => {
-        if (!active) {
+      if (active) {
+        setAuthenticated(true);
+      }
+
+      try {
+        const payload = await fetchWithAuth<Profile>("/profile");
+        if (!active || token !== getAccessToken()) {
           return;
         }
         setProfile(payload);
-      })
-      .catch((error) => {
-        if (!active) {
+      } catch (error) {
+        if (!active || token !== getAccessToken()) {
           return;
         }
         if (error instanceof Error && error.message.includes("Could not validate credentials")) {
           clearAccessToken();
-          setAuthenticated(false);
-          setProfile(null);
         }
-      });
+      }
+    }
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === "streamsphere_access_token") {
+        void syncAuthenticationState();
+      }
+    };
+    const handleAuthStateChange = () => void syncAuthenticationState();
+
+    void syncAuthenticationState();
+    window.addEventListener(AUTH_STATE_CHANGE_EVENT, handleAuthStateChange);
+    window.addEventListener("storage", handleStorageChange);
 
     return () => {
       active = false;
+      window.removeEventListener(AUTH_STATE_CHANGE_EVENT, handleAuthStateChange);
+      window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
+
+  function handleSignOut() {
+    clearAccessToken();
+    setProfile(null);
+    setAuthenticated(false);
+    setProfileMenuOpen(false);
+    router.replace("/");
+    router.refresh();
+  }
 
   const navigationItems = [
     { label: "Home", href: "/" },
@@ -102,14 +134,38 @@ export default function Navbar() {
             <SearchIcon />
           </Link>
           {authenticated ? <NotificationCenter authenticated={authenticated} /> : null}
-          <Link
-            href="/profile"
-            aria-label="Open user profile"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-[#E50914] to-[#7f0710] text-xs font-semibold uppercase text-white transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914]"
-          >
-            {(profile?.username ?? "SS").slice(0, 2)}
-          </Link>
-          {!authenticated ? (
+          {authenticated ? (
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="Open user menu"
+                aria-controls="profile-menu"
+                aria-expanded={profileMenuOpen}
+                onClick={() => setProfileMenuOpen((open) => !open)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-[#E50914] to-[#7f0710] text-xs font-semibold uppercase text-white transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914]"
+              >
+                {(profile?.username ?? "SS").slice(0, 2)}
+              </button>
+              {profileMenuOpen ? (
+                <div id="profile-menu" className="absolute right-0 top-12 w-48 rounded-xl border border-white/10 bg-[#111111] p-2 shadow-2xl shadow-black/40">
+                  <Link
+                    href="/profile"
+                    onClick={() => setProfileMenuOpen(false)}
+                    className="block rounded-lg px-3 py-2 text-sm text-white/75 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914]"
+                  >
+                    View profile
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="mt-1 flex w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-[#ff8b92] transition hover:bg-[#E50914]/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E50914]"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
             <>
               <Link
                 href="/login"
@@ -124,7 +180,7 @@ export default function Navbar() {
                 Sign Up
               </Link>
             </>
-          ) : null}
+          )}
         </div>
       </nav>
     </header>
