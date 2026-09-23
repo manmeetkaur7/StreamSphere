@@ -98,8 +98,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create local env file
-        run: cp .env.example .env
+      - name: Create Docker development env file
+        run: cp .env.docker.example .env.docker
 
       - name: Validate Docker Compose
-        run: docker compose config
+        run: docker compose --env-file .env.docker config

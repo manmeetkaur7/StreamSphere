@@ -74,7 +74,6 @@ FastAPI REST API
   v
 PostgreSQL Database
 ```
-
 ## Project Structure
 
 ```text
@@ -123,13 +122,13 @@ cd StreamSphere
 
 Create a PostgreSQL database for StreamSphere.
 
-Copy the backend environment example:
+Copy the backend environment example, then replace its database and JWT placeholders:
 
 ```powershell
 Copy-Item backend/.env.example backend/.env
 ```
 
-Open `backend/.env` and provide the required database connection, JWT secret, API keys, and allowed frontend origin.
+Set `ALLOWED_ORIGINS` to the frontend URLs that may call the API. For frontend development, copy `frontend/.env.local.example` to `frontend/.env.local`; both API URL values default to `http://127.0.0.1:8000`.
 
 Do not upload the completed `.env` file to GitHub.
 
@@ -165,7 +164,7 @@ The frontend will be available at:
 
 ## Environment Variables
 
-The project uses environment variables for configuration. Refer to the included `.env.example` files for the complete list of required values.
+The project uses environment variables for configuration. Refer to `backend/.env.example` and `frontend/.env.local.example` for complete local configuration. The API also reads a root `.env` when started from the repository root; `backend/.env` takes precedence when both exist.
 
 Typical backend configuration includes:
 
@@ -175,9 +174,11 @@ JWT_SECRET_KEY=
 ALLOWED_ORIGINS=
 ```
 
-The frontend may also require the deployed or local backend URL and any public movie-data configuration used by the application.
-
 Never commit passwords, private API keys, database credentials, or completed `.env` files.
+
+## Optional Docker Support
+
+Docker Compose is included for local development only and is not used by the Vercel or Render production deployments. Copy `.env.docker.example` to `.env.docker`, replace its placeholders, then run `docker compose --env-file .env.docker up --build`.
 
 ## Testing
 

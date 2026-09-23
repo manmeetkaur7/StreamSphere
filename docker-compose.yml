@@ -33,10 +33,13 @@ services:
       context: ./backend
     restart: unless-stopped
     env_file:
-      - .env
+      - path: .env.docker
+        required: false
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      REDIS_ENABLED: ${REDIS_ENABLED}
       REDIS_URL: ${REDIS_URL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
     depends_on:
       postgres:
@@ -63,7 +66,8 @@ services:
         INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL}
     restart: unless-stopped
     env_file:
-      - .env
+      - path: .env.docker
+        required: false
     environment:
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL}
